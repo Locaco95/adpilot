@@ -15,8 +15,29 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 settings = get_settings()
-# Alembic uses sync driver; convert asyncpg URL to psycopg
-sync_url = settings.database_url.replace("+asyncpg", "")
+
+# Build a sync URL for Alembic using psycopg3 (sync mode).
+# Railway Postgres gives postgres:// or postgresql://
+# Supabase gives postgresql+asyncpg://
+# We normalise everything to postgresql+psycopg://
+_raw = settings.database_url or ""
+if _raw.startswith("postgresql+asyncpg://"):
+    sync_url = _raw.replace("postgresql+asyncpg://", "postgresql+psycopg://", 1)
+elif _raw.startswith("postgres://"):
+    sync_url = _raw.replace("postgres://", "postgresql+psycopg://", 1)
+elif _raw.startswith("postgresql://") and "+psycopg" not in _raw:
+    sync_url = _raw.replace("postgresql://", "postgresql+psycopg://", 1)
+else:
+    sync_url = _raw
+
+# Strip sslmode for Railway internal connections (not needed + can cause errors)
+_is_railway_internal = "railway.internal" in sync_url
+if _is_railway_internal and "sslmode=" in sync_url:
+    import re
+    sync_url = re.sub(r"[?&]sslmode=[^&]*", "", sync_url).rstrip("?")
+elif "sslmode=" not in sync_url and not _is_railway_internal and sync_url:
+    sync_url += "?sslmode=require" if "?" not in sync_url else "&sslmode=require"
+
 config.set_main_option("sqlalchemy.url", sync_url)
 
 target_metadata = Base.metadata
