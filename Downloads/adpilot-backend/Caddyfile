@@ -14,9 +14,6 @@
     # Serve the static frontend
     handle {
         root * /srv/frontend
-        # Redirect / to the dashboard (filename contains a space)
-        @root path /
-        redir @root /AdPilot%20Dashboard.html 302
         file_server
     }
 

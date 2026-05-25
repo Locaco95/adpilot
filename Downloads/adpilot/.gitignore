@@ -1,0 +1,6 @@
+# Claude Code MCP config — contains auth tokens, never commit
+.mcp.json
+
+# OS
+.DS_Store
+Thumbs.db
