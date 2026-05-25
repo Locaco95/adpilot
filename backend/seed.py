@@ -213,8 +213,8 @@ AUDIT_SEED = [
 
 async def seed():
     async with AsyncSessionLocal() as db:  # type: AsyncSession
-        # Wipe in FK-safe order
-        for tbl in [Anomaly, Action, AuditLog, CreativeDraft, TelegramMessage, DailyMetric, Campaign, Platform]:
+        # Wipe in FK-safe order (AuditLog excluded — append-only trigger blocks DELETE)
+        for tbl in [Anomaly, Action, CreativeDraft, TelegramMessage, DailyMetric, Campaign, Platform]:
             await db.execute(delete(tbl))
         await db.commit()
 
@@ -303,13 +303,15 @@ async def seed():
                 model_used="seed",
             ))
 
-        # Audit log
-        for action, tier, detail, actor, minutes_ago in AUDIT_SEED:
-            db.add(AuditLog(
-                id=uuid.uuid4(),
-                action=action, tier=tier, detail=detail, actor=actor,
-                timestamp=now - timedelta(minutes=minutes_ago),
-            ))
+        # Audit log — append-only; only seed if table is currently empty
+        existing_audit = (await db.execute(select(AuditLog).limit(1))).first()
+        if not existing_audit:
+            for action, tier, detail, actor, minutes_ago in AUDIT_SEED:
+                db.add(AuditLog(
+                    id=uuid.uuid4(),
+                    action=action, tier=tier, detail=detail, actor=actor,
+                    timestamp=now - timedelta(minutes=minutes_ago),
+                ))
 
         await db.commit()
         print(f"Seeded: {len(PLATFORMS_SEED)} platforms, {len(CAMPAIGNS_SEED)} campaigns, "
