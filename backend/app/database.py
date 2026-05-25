@@ -5,23 +5,22 @@ from app.settings import get_settings
 
 settings = get_settings()
 
-# Fallback URL prevents create_async_engine("") crash if env var is missing.
-# The app will still fail on the first real DB query, but it will start up
-# and the /health endpoint will show db_ok=false instead of crashing.
-_db_url = settings.database_url or "postgresql+asyncpg://localhost/adpilot"
+# Auto-rewrite the URL scheme to use psycopg3 (works correctly with Supabase's
+# Supavisor pooler). asyncpg has TLS/SNI issues that cause "tenant not found"
+# errors against Supavisor.
+_db_url = settings.database_url or "postgresql+psycopg://localhost/adpilot"
+if _db_url.startswith("postgresql+asyncpg://"):
+    _db_url = _db_url.replace("postgresql+asyncpg://", "postgresql+psycopg://", 1)
+elif _db_url.startswith("postgres://"):
+    _db_url = _db_url.replace("postgres://", "postgresql+psycopg://", 1)
+elif _db_url.startswith("postgresql://") and "+psycopg" not in _db_url:
+    _db_url = _db_url.replace("postgresql://", "postgresql+psycopg://", 1)
 
-# statement_cache_size=0 and prepared_statement_cache_size=0 are required
-# when asyncpg connects through Supabase's PgBouncer (port 6543, transaction
-# mode). Prepared statements break under transaction pooling.
 engine = create_async_engine(
     _db_url,
     echo=settings.environment == "development",
     pool_size=5,
     max_overflow=10,
-    connect_args={
-        "statement_cache_size": 0,
-        "prepared_statement_cache_size": 0,
-    },
 )
 
 AsyncSessionLocal = async_sessionmaker(
