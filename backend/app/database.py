@@ -10,11 +10,18 @@ settings = get_settings()
 # and the /health endpoint will show db_ok=false instead of crashing.
 _db_url = settings.database_url or "postgresql+asyncpg://localhost/adpilot"
 
+# statement_cache_size=0 and prepared_statement_cache_size=0 are required
+# when asyncpg connects through Supabase's PgBouncer (port 6543, transaction
+# mode). Prepared statements break under transaction pooling.
 engine = create_async_engine(
     _db_url,
     echo=settings.environment == "development",
     pool_size=5,
     max_overflow=10,
+    connect_args={
+        "statement_cache_size": 0,
+        "prepared_statement_cache_size": 0,
+    },
 )
 
 AsyncSessionLocal = async_sessionmaker(
