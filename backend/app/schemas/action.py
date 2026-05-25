@@ -14,11 +14,11 @@ class ActionOut(BaseModel):
     rationale: str | None
     impact: str | None
     risk: str | None
-    estimated_gain: str | None
+    estimatedGain: str | None
     status: str
-    created_at: datetime
-    expires_at: datetime | None
-    revoke_deadline: datetime | None
+    createdAt: datetime
+    expiresAt: datetime | None
+    revokeDeadline: datetime | None
 
 
 class ActionDecision(BaseModel):

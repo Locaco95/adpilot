@@ -18,9 +18,9 @@ def _to_out(d: CreativeDraft, platform_slug: str, campaign_name: str | None) -> 
     return CreativeDraftOut(
         id=d.id, platform=platform_slug, campaign=campaign_name,
         hook=d.hook, status=d.status,
-        headline=d.headline, primary_text=d.primary_text, cta=d.cta,
-        headline_en=d.headline_en, primary_text_en=d.primary_text_en,
-        created_at=d.created_at,
+        headline=d.headline, primaryText=d.primary_text, cta=d.cta,
+        headlineEn=d.headline_en, primaryTextEn=d.primary_text_en,
+        createdAt=d.created_at,
     )
 
 

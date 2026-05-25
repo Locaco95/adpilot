@@ -49,4 +49,4 @@ class AnomalyOut(BaseModel):
     metric: str | None
     value: str | None
     baseline: str | None
-    z_score: float | None
+    zScore: float | None

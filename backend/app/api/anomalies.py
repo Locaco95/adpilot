@@ -27,7 +27,7 @@ async def list_anomalies(
             timestamp=a.created_at,
             title=a.title, detail=a.detail,
             metric=a.metric, value=a.value, baseline=a.baseline,
-            z_score=float(a.z_score) if a.z_score is not None else None,
+            zScore=float(a.z_score) if a.z_score is not None else None,
         )
         for a in rows
     ]

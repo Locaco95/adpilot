@@ -14,11 +14,11 @@ class CreativeDraftOut(BaseModel):
     hook: str
     status: str
     headline: str
-    primary_text: str
+    primaryText: str
     cta: str
-    headline_en: str | None
-    primary_text_en: str | None
-    created_at: datetime
+    headlineEn: str | None
+    primaryTextEn: str | None
+    createdAt: datetime
 
 
 class CreativeDecision(BaseModel):

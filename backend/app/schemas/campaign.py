@@ -8,9 +8,9 @@ class CampaignOut(BaseModel):
     name: str
     status: str
     budget: float
-    spend_7d: float
-    conv_7d: int
-    rev_7d: float
+    spend7d: float
+    conv7d: int
+    rev7d: float
     cpa: float
     roas: float
     ctr: float

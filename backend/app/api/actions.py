@@ -16,9 +16,9 @@ def _to_out(a: Action, platform_slug: str | None, campaign_name: str | None) -> 
         id=a.id, tier=a.tier, type=a.type,
         platform=platform_slug, campaign=campaign_name,
         description=a.description, rationale=a.rationale,
-        impact=a.impact, risk=a.risk, estimated_gain=a.estimated_gain,
-        status=a.status, created_at=a.created_at,
-        expires_at=a.expires_at, revoke_deadline=a.revoke_deadline,
+        impact=a.impact, risk=a.risk, estimatedGain=a.estimated_gain,
+        status=a.status, createdAt=a.created_at,
+        expiresAt=a.expires_at, revokeDeadline=a.revoke_deadline,
     )
 
 
