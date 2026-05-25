@@ -6,9 +6,9 @@ provisioned, swap the issuer for `supabase.auth.sign_in_with_password()`
 and validate the JWT using the Supabase JWT secret.
 """
 from datetime import datetime, timedelta, timezone
+import bcrypt
 from fastapi import APIRouter, HTTPException, status
 from jose import jwt
-from passlib.hash import bcrypt
 
 from app.schemas.auth import LoginRequest, TokenResponse, RefreshRequest
 from app.settings import get_settings
@@ -18,13 +18,13 @@ settings = get_settings()
 
 # MVP operator credentials — replace with Supabase Auth in production
 OPERATOR_EMAIL = "operator@adpilot.local"
-_OPERATOR_PASSWORD_HASH: str | None = None
+_OPERATOR_PASSWORD_HASH: bytes | None = None
 
 
-def _get_operator_hash() -> str:
+def _get_operator_hash() -> bytes:
     global _OPERATOR_PASSWORD_HASH
     if _OPERATOR_PASSWORD_HASH is None:
-        _OPERATOR_PASSWORD_HASH = bcrypt.hash("changeme123")
+        _OPERATOR_PASSWORD_HASH = bcrypt.hashpw(b"changeme123", bcrypt.gensalt())
     return _OPERATOR_PASSWORD_HASH
 
 
@@ -39,7 +39,8 @@ def _issue_token(sub: str, minutes: int) -> str:
 
 @router.post("/login", response_model=TokenResponse)
 async def login(req: LoginRequest):
-    if req.email != OPERATOR_EMAIL or not bcrypt.verify(req.password, _get_operator_hash()):
+    password_ok = bcrypt.checkpw(req.password.encode(), _get_operator_hash())
+    if req.email != OPERATOR_EMAIL or not password_ok:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     access = _issue_token(req.email, settings.jwt_expire_minutes)
