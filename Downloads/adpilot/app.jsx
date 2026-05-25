@@ -5,7 +5,7 @@ function LoginPage({ onLogin }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     if (!email.trim() || !password.trim()) {
@@ -13,10 +13,14 @@ function LoginPage({ onLogin }) {
       return;
     }
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await window.AdPilotAPI.login(email, password);
       onLogin();
-    }, 900);
+    } catch (err) {
+      setError(err.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -166,22 +170,53 @@ function LoginPage({ onLogin }) {
 /* ── Main App Shell ───────────────────────────────────── */
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(
-    sessionStorage.getItem('adpilot_auth') === '1'
+    window.AdPilotAPI && window.AdPilotAPI.auth.isAuthed()
   );
+  const [dataReady, setDataReady] = useState(false);
+  const [loadError, setLoadError] = useState('');
   const [activePage, setActivePage] = useState('overview');
 
-  const handleLogin = () => {
-    sessionStorage.setItem('adpilot_auth', '1');
-    setIsLoggedIn(true);
-  };
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    setDataReady(false);
+    setLoadError('');
+    window.AdPilotAPI.loadDashboardData()
+      .then(() => setDataReady(true))
+      .catch((err) => setLoadError(err.message || 'Failed to load dashboard'));
+  }, [isLoggedIn]);
+
+  const handleLogin = () => setIsLoggedIn(true);
 
   const handleLogout = () => {
-    sessionStorage.removeItem('adpilot_auth');
+    window.AdPilotAPI.auth.clear();
     setIsLoggedIn(false);
+    setDataReady(false);
   };
 
   if (!isLoggedIn) {
     return <LoginPage onLogin={handleLogin} />;
+  }
+
+  if (loadError) {
+    return (
+      <div style={{
+        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'var(--bg-root)', color: 'var(--danger)', flexDirection: 'column', gap: 16,
+      }}>
+        <div style={{ fontSize: 16, fontWeight: 600 }}>Failed to load dashboard</div>
+        <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>{loadError}</div>
+        <button className="btn btn-ghost btn-sm" onClick={handleLogout}>Sign out</button>
+      </div>
+    );
+  }
+
+  if (!dataReady) {
+    return (
+      <div style={{
+        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'var(--bg-root)', color: 'var(--text-tertiary)', fontSize: 13,
+      }}>Loading dashboard…</div>
+    );
   }
 
   const renderPage = () => {

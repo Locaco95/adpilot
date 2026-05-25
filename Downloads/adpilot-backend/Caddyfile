@@ -1,0 +1,24 @@
+# Local dev: replace `localhost` with your domain in production (e.g. adpilot.example.com)
+# Caddy auto-issues TLS certs when given a real domain.
+
+:80 {
+    # API proxy — must come before the file_server matcher
+    handle /api/* {
+        reverse_proxy api:8000
+    }
+
+    handle /health {
+        reverse_proxy api:8000
+    }
+
+    # Serve the static frontend
+    handle {
+        root * /srv/frontend
+        # Redirect / to the dashboard (filename contains a space)
+        @root path /
+        redir @root /AdPilot%20Dashboard.html 302
+        file_server
+    }
+
+    encode gzip
+}

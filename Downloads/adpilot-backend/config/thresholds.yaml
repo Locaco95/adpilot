@@ -1,0 +1,88 @@
+# AdPilot threshold configuration — source of truth
+# Loaded into system_config table at startup, hot-reloaded every 5 min
+
+targets:
+  cpa: 15.00
+  roas: 2.50
+  daily_budget: 700.00
+
+kill_criteria:
+  cpa_multiplier: 1.8          # CPA > 1.8x target
+  cpa_min_conversions: 30
+  cpa_sustained_days: 3
+  roas_floor: 0.80
+  roas_lookback_days: 7
+  roas_min_spend: 200.00
+  z_score_cpa_threshold: 3.0
+  z_score_sustained_hours: 48
+  frequency_max: 8
+  ctr_drop_pct_at_freq_max: 0.50
+
+scale_criteria:
+  roas_multiplier: 1.30        # ROAS >= 1.3x target
+  min_conversions_7d: 100
+  min_live_days: 5
+  max_spend_pct_of_cap: 0.80
+  budget_increase_pct: 0.20    # +20%
+
+tier2_limits:
+  max_budget_change_pct: 0.20
+  max_budget_change_abs: 200.00
+  revoke_window_seconds: 300   # 5-minute revocation window
+
+fatigue:
+  ctr_drop_threshold: 0.30     # 30% drop from peak
+  frequency_cold: 4.0
+  frequency_warm: 6.0
+  creative_refresh_days: 21
+
+analytics:
+  ewma_alpha: 0.30
+  z_score_lookback_days: 28
+  bayes_min_conversions: 30    # below this, use Bayesian CI instead
+
+calendar:
+  salary_week_start_day: 25    # day of month
+  salary_week_boost: 1.18
+  weekend_days: [4, 5]         # Python weekday: 4=Fri, 5=Sat (KSA)
+  weekend_dip: 0.88
+
+blackout:
+  start_utc: "00:00"
+  end_utc: "01:00"
+
+creative:
+  variants_per_adset_per_week: 5
+  max_parallel_variants: 4
+  headline_max_chars: 25
+  primary_text_min_chars: 50
+  primary_text_max_chars: 90
+  approved_ctas:
+    - "احصل عليه"
+    - "اطلب الآن"
+    - "اكتشف المزيد"
+    - "جرب الآن"
+    - "اعرف أكثر"
+  hook_types:
+    - pain_point
+    - curiosity
+    - social_proof
+    - scarcity
+    - identity
+
+retention:
+  audit_log_days: 90
+  financial_audit_days: 2555   # 7 years
+
+llm:
+  creative_model: "claude-sonnet-4-6"
+  digest_model: "claude-haiku-4-5-20251001"
+  reasoning_model: "claude-sonnet-4-6"
+  max_tokens_creative: 800
+  max_tokens_digest: 1000
+  daily_cost_limit_usd: 5.0
+
+ingestion:
+  hot_path_minutes: 30
+  warm_path_hours: 6
+  cold_path_backfill_days: 7
