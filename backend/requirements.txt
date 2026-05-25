@@ -11,12 +11,5 @@ passlib[bcrypt]==1.7.4
 python-multipart==0.0.20
 apscheduler==3.10.4
 pyyaml==6.0.2
-numpy==2.2.1
-scipy==1.15.0
-pandas==2.2.3
-anthropic==0.42.0
-facebook-business==21.0.2
-ShopifyAPI==12.6.0
-python-telegram-bot==21.10
-slowapi==0.1.9
 greenlet==3.1.1
+slowapi==0.1.9
