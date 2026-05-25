@@ -18,7 +18,14 @@ settings = get_settings()
 
 # MVP operator credentials — replace with Supabase Auth in production
 OPERATOR_EMAIL = "operator@adpilot.local"
-OPERATOR_PASSWORD_HASH = bcrypt.hash("changeme123")
+_OPERATOR_PASSWORD_HASH: str | None = None
+
+
+def _get_operator_hash() -> str:
+    global _OPERATOR_PASSWORD_HASH
+    if _OPERATOR_PASSWORD_HASH is None:
+        _OPERATOR_PASSWORD_HASH = bcrypt.hash("changeme123")
+    return _OPERATOR_PASSWORD_HASH
 
 
 def _issue_token(sub: str, minutes: int) -> str:
@@ -32,7 +39,7 @@ def _issue_token(sub: str, minutes: int) -> str:
 
 @router.post("/login", response_model=TokenResponse)
 async def login(req: LoginRequest):
-    if req.email != OPERATOR_EMAIL or not bcrypt.verify(req.password, OPERATOR_PASSWORD_HASH):
+    if req.email != OPERATOR_EMAIL or not bcrypt.verify(req.password, _get_operator_hash()):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     access = _issue_token(req.email, settings.jwt_expire_minutes)
