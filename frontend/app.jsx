@@ -4,7 +4,6 @@ function LoadingScreen() {
     <div style={{
       minHeight: '100vh',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'var(--bg-root)',
     }}>
       <div style={{
         width: 40, height: 40,
