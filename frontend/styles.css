@@ -277,8 +277,8 @@ body {
 /* KPI Grid */
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: clamp(10px, 1vw, 16px);
   margin-bottom: 20px;
 }
 
