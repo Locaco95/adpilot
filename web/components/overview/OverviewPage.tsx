@@ -305,7 +305,7 @@ export function OverviewPage() {
       label: p.charAt(0).toUpperCase() + p.slice(1),
       color: `var(--${p})`,
       value: roas,
-      display: roas.toFixed(2) + "×",
+      display: safeNum(roas).toFixed(2) + "×",
     };
   });
 
@@ -365,9 +365,9 @@ export function OverviewPage() {
         <KPICard label="Total Spend" value={summary.total_spend} delta={summary.spend_delta} prefix="$" sparkData={spendSparkData} />
         <KPICard label="Conversions" value={summary.total_conversions} delta={summary.conv_delta} sparkData={convSparkData} accentColor="var(--success)" />
         <KPICard label="Revenue" value={summary.total_revenue} delta={0} prefix="$" accentColor="var(--success)" />
-        <KPICard label="Blended ROAS" value={summary.blended_roas.toFixed(2)} delta={summary.roas_delta} suffix="×" sparkData={roasSparkData} accentColor="var(--accent)" />
-        <KPICard label="Blended CPA" value={summary.blended_cpa.toFixed(2)} delta={-summary.cpa_delta} prefix="$" sparkData={cpaSparkData}
-          accentColor={summary.blended_cpa > TARGET_CPA ? "var(--danger)" : "var(--success)"} />
+        <KPICard label="Blended ROAS" value={safeNum(summary.blended_roas).toFixed(2)} delta={summary.roas_delta} suffix="×" sparkData={roasSparkData} accentColor="var(--accent)" />
+        <KPICard label="Blended CPA" value={safeNum(summary.blended_cpa).toFixed(2)} delta={-safeNum(summary.cpa_delta)} prefix="$" sparkData={cpaSparkData}
+          accentColor={safeNum(summary.blended_cpa) > TARGET_CPA ? "var(--danger)" : "var(--success)"} />
       </div>
 
       {/* Charts row */}
@@ -452,10 +452,10 @@ export function OverviewPage() {
                 <td><StatusBadge status={c.status} /></td>
                 <td className="mono">{formatCurrency(c.spend7d)}</td>
                 <td className="mono">{c.conv7d}</td>
-                <td className="mono" style={{ color: c.cpa > TARGET_CPA ? "var(--danger)" : "var(--success)" }}>${c.cpa.toFixed(2)}</td>
-                <td className="mono" style={{ color: c.roas >= TARGET_ROAS ? "var(--success)" : c.roas >= 1.5 ? "var(--warning)" : "var(--danger)" }}>{c.roas.toFixed(2)}×</td>
-                <td className="mono">{c.ctr.toFixed(1)}%</td>
-                <td className="mono">{c.freq.toFixed(1)}</td>
+                <td className="mono" style={{ color: safeNum(c.cpa) > TARGET_CPA ? "var(--danger)" : "var(--success)" }}>${safeNum(c.cpa).toFixed(2)}</td>
+                <td className="mono" style={{ color: safeNum(c.roas) >= TARGET_ROAS ? "var(--success)" : safeNum(c.roas) >= 1.5 ? "var(--warning)" : "var(--danger)" }}>{safeNum(c.roas).toFixed(2)}×</td>
+                <td className="mono">{safeNum(c.ctr).toFixed(1)}%</td>
+                <td className="mono">{safeNum(c.freq).toFixed(1)}</td>
                 <td><TrendArrow trend={c.trend} /></td>
               </tr>
             ))}
