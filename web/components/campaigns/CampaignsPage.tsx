@@ -74,10 +74,10 @@ export function CampaignsPage() {
         <MiniStat label="Warning" value={filtered.filter((c) => c.status === "warning").length} color="var(--warning)" />
         <MiniStat label="Paused"  value={filtered.filter((c) => c.status === "paused").length}  color="var(--text-tertiary)" />
         <MiniStat label="Avg ROAS"
-          value={(filtered.reduce((s, c) => s + c.roas, 0) / (filtered.length || 1)).toFixed(2) + "×"}
+          value={(filtered.reduce((s, c) => s + (Number(c.roas) || 0), 0) / (filtered.length || 1)).toFixed(2) + "×"}
           color="var(--accent)" />
         <MiniStat label="Avg CPA"
-          value={"$" + (filtered.reduce((s, c) => s + c.cpa, 0) / (filtered.length || 1)).toFixed(2)}
+          value={"$" + (filtered.reduce((s, c) => s + (Number(c.cpa) || 0), 0) / (filtered.length || 1)).toFixed(2)}
           color="var(--info)" />
       </div>
 
@@ -108,15 +108,15 @@ export function CampaignsPage() {
                 <td className="mono">${c.budget}</td>
                 <td className="mono">{formatCurrency(c.spend7d)}</td>
                 <td className="mono">{c.conv7d}</td>
-                <td className="mono" style={{ color: c.cpa > TARGET_CPA * 1.5 ? "var(--danger)" : c.cpa > TARGET_CPA ? "var(--warning)" : "var(--success)" }}>
-                  ${c.cpa.toFixed(2)}
+                <td className="mono" style={{ color: (Number(c.cpa)||0) > TARGET_CPA * 1.5 ? "var(--danger)" : (Number(c.cpa)||0) > TARGET_CPA ? "var(--warning)" : "var(--success)" }}>
+                  ${(Number(c.cpa)||0).toFixed(2)}
                 </td>
-                <td className="mono" style={{ color: c.roas >= TARGET_ROAS ? "var(--success)" : c.roas >= 1.5 ? "var(--warning)" : "var(--danger)" }}>
-                  {c.roas.toFixed(2)}×
+                <td className="mono" style={{ color: (Number(c.roas)||0) >= TARGET_ROAS ? "var(--success)" : (Number(c.roas)||0) >= 1.5 ? "var(--warning)" : "var(--danger)" }}>
+                  {(Number(c.roas)||0).toFixed(2)}×
                 </td>
-                <td className="mono">{c.ctr.toFixed(1)}%</td>
-                <td className="mono" style={{ color: c.freq > 6 ? "var(--danger)" : c.freq > 4 ? "var(--warning)" : "var(--text-secondary)" }}>
-                  {c.freq.toFixed(1)}
+                <td className="mono">{(Number(c.ctr)||0).toFixed(1)}%</td>
+                <td className="mono" style={{ color: (Number(c.freq)||0) > 6 ? "var(--danger)" : (Number(c.freq)||0) > 4 ? "var(--warning)" : "var(--text-secondary)" }}>
+                  {(Number(c.freq)||0).toFixed(1)}
                 </td>
                 <td><TrendArrow trend={c.trend} /></td>
               </tr>
