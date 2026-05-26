@@ -8,18 +8,25 @@ import { StatusBadge, TrendArrow, PlatformTag, SkeletonOverview, SyncSpinner } f
 import type { Anomaly, DailyMetrics, OverviewSummary, Campaign } from "@/types";
 
 /* ── Helpers ─────────────────────────────────────────────── */
-function formatNum(n: number): string {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
-  if (n >= 10_000) return (n / 1_000).toFixed(1) + "K";
-  if (n >= 1_000) return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
-  if (n >= 100) return n.toFixed(0);
-  if (n >= 10) return n.toFixed(1);
-  return n.toFixed(2);
+function safeNum(n: unknown): number {
+  const v = Number(n);
+  return isFinite(v) ? v : 0;
 }
 
-function formatCompact(n: number): string {
-  if (n >= 1000) return (n / 1000).toFixed(0) + "K";
-  return n.toFixed(0);
+function formatNum(n: unknown): string {
+  const v = safeNum(n);
+  if (v >= 1_000_000) return (v / 1_000_000).toFixed(1) + "M";
+  if (v >= 10_000) return (v / 1_000).toFixed(1) + "K";
+  if (v >= 1_000) return v.toLocaleString("en-US", { maximumFractionDigits: 0 });
+  if (v >= 100) return v.toFixed(0);
+  if (v >= 10) return v.toFixed(1);
+  return v.toFixed(2);
+}
+
+function formatCompact(n: unknown): string {
+  const v = safeNum(n);
+  if (v >= 1000) return (v / 1000).toFixed(0) + "K";
+  return v.toFixed(0);
 }
 
 function timeAgo(iso: string): string {
@@ -65,19 +72,20 @@ function KPICard({
   label, value, delta, prefix = "", suffix = "",
   sparkData, accentColor,
 }: {
-  label: string; value: number | string; delta: number;
+  label: string; value: number | string | null | undefined; delta: number | null | undefined;
   prefix?: string; suffix?: string; sparkData?: number[]; accentColor?: string;
 }) {
-  const deltaClass = delta > 0.5 ? "positive" : delta < -0.5 ? "negative" : "neutral";
-  const arrow = delta > 0.5 ? "↑" : delta < -0.5 ? "↓" : "→";
+  const d = safeNum(delta);
+  const deltaClass = d > 0.5 ? "positive" : d < -0.5 ? "negative" : "neutral";
+  const arrow = d > 0.5 ? "↑" : d < -0.5 ? "↓" : "→";
   return (
     <div className="kpi-card">
       <div className="kpi-label">{label}</div>
       <div className="kpi-value" style={accentColor ? { color: accentColor } : {}}>
-        {prefix}{typeof value === "number" ? formatNum(value) : value}{suffix}
+        {prefix}{(value == null) ? "—" : typeof value === "number" ? formatNum(value) : value}{suffix}
       </div>
       <div className={`kpi-delta ${deltaClass}`}>
-        {arrow} {Math.abs(delta).toFixed(1)}% vs prev 7d
+        {arrow} {Math.abs(d).toFixed(1)}% vs prev 7d
       </div>
       {sparkData && <Sparkline data={sparkData} color={accentColor ?? "var(--accent)"} />}
     </div>
@@ -231,9 +239,9 @@ function AnomalyRow({ anomaly }: { anomaly: Anomaly }) {
       </div>
       <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>{anomaly.message}</div>
       <div className="flex items-center gap-8 mt-8" style={{ gap: 12, marginTop: 8 }}>
-        <span className="text-mono text-xs">Value: <strong style={{ color: sev.color }}>{anomaly.value.toFixed(2)}</strong></span>
-        <span className="text-mono text-xs">Baseline: {anomaly.baseline.toFixed(2)}</span>
-        <span className="text-mono text-xs">z={anomaly.z_score.toFixed(1)}</span>
+        <span className="text-mono text-xs">Value: <strong style={{ color: sev.color }}>{safeNum(anomaly.value).toFixed(2)}</strong></span>
+        <span className="text-mono text-xs">Baseline: {safeNum(anomaly.baseline).toFixed(2)}</span>
+        <span className="text-mono text-xs">z={safeNum(anomaly.z_score).toFixed(1)}</span>
       </div>
     </div>
   );
