@@ -1,12 +1,17 @@
 /* Overview Dashboard Page */
 function OverviewPage({ isLoading = false }) {
-  if (isLoading) return <SkeletonOverview />;
-
+  // ALL hooks MUST come before any conditional return (React Rules of Hooks)
   const [selectedWindow, setSelectedWindow] = useState(7);
   const [showWindowMenu, setShowWindowMenu] = useState(false);
-  const [summary, setSummary] = useState(SUMMARY_KPIS);
-  const [daily, setDaily] = useState(DAILY_METRICS);
+  const [summary, setSummary] = useState(null);
+  const [daily, setDaily] = useState([]);
   const [windowLoading, setWindowLoading] = useState(false);
+
+  // Populate from window globals once data is ready
+  useEffect(() => {
+    if (!isLoading && window.SUMMARY_KPIS) setSummary(window.SUMMARY_KPIS);
+    if (!isLoading && window.DAILY_METRICS) setDaily(window.DAILY_METRICS);
+  }, [isLoading]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -15,6 +20,9 @@ function OverviewPage({ isLoading = false }) {
     document.addEventListener('click', handler);
     return () => document.removeEventListener('click', handler);
   }, [showWindowMenu]);
+
+  // Skeleton until data is available
+  if (isLoading || !summary) return <SkeletonOverview />;
 
   const changeWindow = async (days) => {
     if (days === selectedWindow) { setShowWindowMenu(false); return; }

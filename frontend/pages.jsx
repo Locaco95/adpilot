@@ -2,8 +2,8 @@
 
 /* ── Telegram Preview ─────────────────────────────────── */
 function TelegramPage({ isLoading = false }) {
-  if (isLoading) return <SkeletonGenericPage title="Telegram" />;
   const [msgStates, setMsgStates] = useState({});
+  if (isLoading) return <SkeletonGenericPage title="Telegram" />;
 
   const handleTgAction = (msgId, action) => {
     setMsgStates(prev => ({ ...prev, [msgId]: action }));
@@ -195,12 +195,12 @@ function TierExplainer({ tier, label, desc, color }) {
 
 /* ── Audit Log Page ───────────────────────────────────── */
 function AuditPage({ isLoading = false }) {
-  if (isLoading) return <SkeletonGenericPage title="Audit Log" />;
   const actionIcons = {
     action_proposed: '📋', anomaly_detected: '🚨', budget_realloc: '💰',
     creative_generated: '✦', data_pull: '⟳', reconciliation: '⟳',
     action_approved: '✅', campaign_paused: '⏸', digest_sent: '📨', action_rejected: '❌',
   };
+  if (isLoading) return <SkeletonGenericPage title="Audit Log" />;
 
   return (
     <div>
