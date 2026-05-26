@@ -1,14 +1,37 @@
 const { useState, useEffect, useRef, useMemo } = React;
 
-/* ── Sidebar ──────────────────────────────────────────── */
+/* ── Nav config ───────────────────────────────────────── */
 const NAV_ITEMS = [
-  { id: 'overview', icon: '◫', label: 'Overview' },
-  { id: 'actions', icon: '⚡', label: 'Actions', badge: 3 },
+  { id: 'overview',  icon: '◫', label: 'Overview' },
+  { id: 'actions',   icon: '⚡', label: 'Actions',     badge: 3 },
   { id: 'campaigns', icon: '◩', label: 'Campaigns' },
-  { id: 'creative', icon: '✦', label: 'Creative Hub' },
-  { id: 'telegram', icon: '▷', label: 'Telegram', },
-  { id: 'audit', icon: '☰', label: 'Audit Log' },
+  { id: 'creative',  icon: '✦', label: 'Creative Hub' },
+  { id: 'telegram',  icon: '▷', label: 'Telegram' },
+  { id: 'audit',     icon: '☰', label: 'Audit Log' },
 ];
+
+const PAGE_LABELS = {
+  overview: 'Overview', actions: 'Actions', campaigns: 'Campaigns',
+  creative: 'Creative Hub', telegram: 'Telegram', audit: 'Audit Log',
+};
+
+/* ── Mobile Topbar ────────────────────────────────────── */
+function MobileTopbar({ activePage, onMenuClick }) {
+  return (
+    <div className="mobile-topbar">
+      <button className="hamburger-btn" onClick={onMenuClick} aria-label="Open menu">
+        <span /><span /><span />
+      </button>
+      <div className="mobile-topbar-logo">
+        <div className="mobile-topbar-logo-mark">▲</div>
+        <span className="mobile-topbar-page">{PAGE_LABELS[activePage] || 'AdPilot'}</span>
+      </div>
+      <div className="mobile-topbar-right">
+        <span className="mobile-status-dot" title="System healthy" />
+      </div>
+    </div>
+  );
+}
 
 /* ── Sidebar Runtime Status ───────────────────────────── */
 function SidebarRuntime() {
@@ -161,66 +184,82 @@ function OperatorCard() {
 }
 
 /* ── Sidebar ──────────────────────────────────────────── */
-function Sidebar({ activePage, onNavigate, onLogout }) {
+function Sidebar({ activePage, onNavigate, onLogout, isOpen, onClose }) {
+  // Close drawer on Escape key
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape' && isOpen) onClose?.(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [isOpen]);
+
   return (
-    <aside className="sidebar">
-      <div className="sidebar-logo">
-        <div className="sidebar-logo-mark">▲</div>
-        <div className="sidebar-logo-text">ad<span>pilot</span></div>
-      </div>
-      <div className="sidebar-section">
-        <div className="sidebar-section-label">Command Center</div>
-        <nav className="sidebar-nav">
-          {NAV_ITEMS.map(item => (
-            <button
-              key={item.id}
-              className={`sidebar-item ${activePage === item.id ? 'active' : ''}`}
-              onClick={() => onNavigate(item.id)}
+    <>
+      {/* Backdrop overlay — mobile only */}
+      <div
+        className={`sidebar-overlay ${isOpen ? 'overlay-visible' : ''}`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      <aside className={`sidebar ${isOpen ? 'sidebar-open' : ''}`}>
+        <div className="sidebar-logo">
+          <div className="sidebar-logo-mark">▲</div>
+          <div className="sidebar-logo-text">ad<span>pilot</span></div>
+        </div>
+        <div className="sidebar-section">
+          <div className="sidebar-section-label">Command Center</div>
+          <nav className="sidebar-nav">
+            {NAV_ITEMS.map(item => (
+              <button
+                key={item.id}
+                className={`sidebar-item ${activePage === item.id ? 'active' : ''}`}
+                onClick={() => { onNavigate(item.id); onClose?.(); }}
+              >
+                <span className="sidebar-icon">{item.icon}</span>
+                <span className="sidebar-label">{item.label}</span>
+                {item.badge > 0 && <span className="sidebar-badge">{item.badge}</span>}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        {/* ── Bottom operator block ── */}
+        <div className="sidebar-footer" style={{ paddingTop: 12 }}>
+          <SidebarRuntime />
+          <OperatorCard />
+
+          {/* Sign out — low emphasis */}
+          {onLogout && (
+            <button onClick={onLogout} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              width: '100%', padding: '7px 10px',
+              background: 'none', border: 'none',
+              borderRadius: 'var(--radius-sm)',
+              color: 'var(--text-tertiary)', fontSize: 11,
+              fontFamily: 'var(--font-body)', cursor: 'pointer',
+              transition: 'background 0.15s, color 0.15s',
+            }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'oklch(0.22 0.01 260)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-tertiary)'; }}
             >
-              <span className="sidebar-icon">{item.icon}</span>
-              {item.label}
-              {item.badge > 0 && <span className="sidebar-badge">{item.badge}</span>}
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              Sign out
             </button>
-          ))}
-        </nav>
-      </div>
+          )}
+        </div>
 
-      {/* ── Bottom operator block ── */}
-      <div className="sidebar-footer" style={{ paddingTop: 12 }}>
-        <SidebarRuntime />
-        <OperatorCard />
-
-        {/* Sign out — low emphasis */}
-        {onLogout && (
-          <button onClick={onLogout} style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            width: '100%', padding: '7px 10px',
-            background: 'none', border: 'none',
-            borderRadius: 'var(--radius-sm)',
-            color: 'var(--text-tertiary)', fontSize: 11,
-            fontFamily: 'var(--font-body)', cursor: 'pointer',
-            transition: 'background 0.15s, color 0.15s',
-          }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'oklch(0.22 0.01 260)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-tertiary)'; }}
-          >
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-            Sign out
-          </button>
-        )}
-      </div>
-
-      <style>{`
-        @keyframes pulse-dot {
-          0%, 100% { opacity: 1; box-shadow: 0 0 0 2px oklch(0.72 0.17 145 / 0.25); }
-          50%       { opacity: 0.7; box-shadow: 0 0 0 4px oklch(0.72 0.17 145 / 0.1); }
-        }
-      `}</style>
-    </aside>
+        <style>{`
+          @keyframes pulse-dot {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 2px oklch(0.72 0.17 145 / 0.25); }
+            50%       { opacity: 0.7; box-shadow: 0 0 0 4px oklch(0.72 0.17 145 / 0.1); }
+          }
+        `}</style>
+      </aside>
+    </>
   );
 }
 

@@ -175,6 +175,7 @@ function App() {
   const [dataReady, setDataReady] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [activePage, setActivePage] = useState('overview');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -231,9 +232,18 @@ function App() {
     }
   };
 
+  const navigate = (page) => { setActivePage(page); setSidebarOpen(false); };
+
   return (
     <div className="app-layout">
-      <Sidebar activePage={activePage} onNavigate={setActivePage} onLogout={handleLogout} />
+      <MobileTopbar activePage={activePage} onMenuClick={() => setSidebarOpen(true)} />
+      <Sidebar
+        activePage={activePage}
+        onNavigate={navigate}
+        onLogout={handleLogout}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
       <main className="main-content" key={activePage}>
         {renderPage()}
       </main>
