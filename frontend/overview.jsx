@@ -1,5 +1,7 @@
 /* Overview Dashboard Page */
-function OverviewPage() {
+function OverviewPage({ isLoading = false }) {
+  if (isLoading) return <SkeletonOverview />;
+
   const [selectedWindow, setSelectedWindow] = useState(7);
   const [showWindowMenu, setShowWindowMenu] = useState(false);
   const [summary, setSummary] = useState(SUMMARY_KPIS);
@@ -54,7 +56,7 @@ function OverviewPage() {
   ];
 
   return (
-    <div>
+    <div className="content-ready">
       <div className="page-header">
         <div>
           <div className="page-title">Overview</div>

@@ -72,6 +72,51 @@ body {
   line-height: 1.5;
 }
 
+/* ── Global keyframes ────────────────────────────────────── */
+@keyframes adp-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes adp-dashboard-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Skeleton Loading System ─────────────────────────────── */
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+@keyframes skeleton-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    oklch(0.19 0.012 260) 25%,
+    oklch(0.24 0.012 260) 50%,
+    oklch(0.19 0.012 260) 75%
+  );
+  background-size: 300% 100%;
+  animation: skeleton-shimmer 2s ease-in-out infinite;
+  border-radius: 5px;
+}
+
+.skeleton-page {
+  animation: skeleton-in 0.25s ease forwards;
+}
+
+/* ── Content fade-in when data arrives ───────────────────── */
+@keyframes content-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.content-ready {
+  animation: content-in 0.3s ease forwards;
+}
+
 /* Layout */
 .app-layout {
   display: flex;

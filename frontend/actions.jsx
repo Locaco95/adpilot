@@ -1,5 +1,6 @@
 /* Actions & Approval Queue Page */
-function ActionsPage() {
+function ActionsPage({ isLoading = false }) {
+  if (isLoading) return <SkeletonGenericPage title="Actions" />;
   const [filter, setFilter] = useState('all');
   const [actionStates, setActionStates] = useState({});
 

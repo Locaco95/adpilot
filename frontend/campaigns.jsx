@@ -1,5 +1,6 @@
 /* Campaigns Explorer Page */
-function CampaignsPage() {
+function CampaignsPage({ isLoading = false }) {
+  if (isLoading) return <SkeletonGenericPage title="Campaigns" />;
   const [platformFilter, setPlatformFilter] = useState('all');
   const [sortBy, setSortBy] = useState('roas');
   const [sortDir, setSortDir] = useState('desc');

@@ -507,10 +507,250 @@ function timeAgo(isoStr) {
   return `${Math.round(hrs / 24)}d ago`;
 }
 
+/* ══════════════════════════════════════════════════════════
+   SKELETON LOADING SYSTEM
+   Premium skeleton components matching AdPilot's dark theme.
+   All shimmer via CSS .skeleton — no inline animation needed.
+   ══════════════════════════════════════════════════════════ */
+
+/* Base skeleton block — the only primitive needed */
+function SkeletonBlock({ width = '100%', height = 14, radius = 5, style = {} }) {
+  return (
+    <div
+      className="skeleton"
+      style={{ width, height, borderRadius: radius, flexShrink: 0, ...style }}
+    />
+  );
+}
+
+/* Inline mini-spinner — feels like "AI syncing", not "page loading" */
+function SyncSpinner({ size = 10 }) {
+  return (
+    <span style={{
+      width: size, height: size, borderRadius: '50%',
+      border: `1.5px solid oklch(0.75 0.14 75 / 0.5)`,
+      borderTopColor: 'transparent',
+      display: 'inline-block',
+      animation: 'adp-spin 0.9s linear infinite',
+      flexShrink: 0,
+    }} />
+  );
+}
+
+/* KPI card skeleton — exact same outer shell as .kpi-card */
+function SkeletonKPI() {
+  return (
+    <div className="kpi-card">
+      <SkeletonBlock width="52%" height={10} style={{ marginBottom: 10 }} />
+      <SkeletonBlock width="68%" height={28} style={{ marginBottom: 8 }} />
+      <SkeletonBlock width={72} height={14} radius={10} style={{ marginBottom: 12 }} />
+      <SkeletonBlock width="100%" height={28} radius={3} />
+    </div>
+  );
+}
+
+/* Chart area skeleton — reserves the same height as real charts */
+function SkeletonChart({ height = 170 }) {
+  return <SkeletonBlock height={height} radius={8} style={{ marginTop: 8 }} />;
+}
+
+/* Table skeleton — mirrors data-table column widths */
+function SkeletonTable({ rows = 5 }) {
+  // Approximate widths: dot, name, status, spend, conv, cpa, roas, ctr, freq, arrow
+  const HEADER_WIDTHS = [10, 90, 52, 52, 24, 40, 40, 32, 24, 12];
+  const ROW_WIDTHS    = [10, 140, 54, 62, 26, 44, 44, 34, 26, 14];
+  return (
+    <table className="data-table">
+      <thead>
+        <tr>
+          {HEADER_WIDTHS.map((w, i) => (
+            <th key={i}>
+              {w > 10 && <SkeletonBlock width={w} height={9} />}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {Array.from({ length: rows }, (_, row) => (
+          <tr key={row} style={{ opacity: 1 - row * 0.1 }}>
+            {ROW_WIDTHS.map((w, i) => (
+              <td key={i}>
+                <SkeletonBlock
+                  width={w * (0.75 + (row * i % 3) * 0.08)}
+                  height={10}
+                  radius={i === 0 ? 999 : 4}
+                />
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+/* List of skeleton rows (anomalies, actions, creative cards) */
+function SkeletonCardList({ count = 3, height = 72 }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {Array.from({ length: count }, (_, i) => (
+        <SkeletonBlock key={i} height={height} radius={8} style={{ opacity: 1 - i * 0.12 }} />
+      ))}
+    </div>
+  );
+}
+
+/* Skeleton donut — replaces DonutChart while loading */
+function SkeletonDonut({ size = 110 }) {
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%',
+      margin: '8px auto',
+      background: `conic-gradient(
+        oklch(0.24 0.012 260) 0deg 120deg,
+        oklch(0.21 0.012 260) 120deg 240deg,
+        oklch(0.23 0.012 260) 240deg 360deg
+      )`,
+      animation: 'skeleton-shimmer 2s ease-in-out infinite',
+    }}>
+      <div style={{
+        width: '60%', height: '60%', borderRadius: '50%',
+        background: 'var(--bg-card)', margin: '20%',
+      }} />
+    </div>
+  );
+}
+
+/* Full Overview page skeleton — exact structural mirror of real Overview */
+function SkeletonOverview() {
+  return (
+    <div className="skeleton-page">
+      {/* Page header */}
+      <div className="page-header">
+        <div>
+          <div className="page-title">Overview</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 5 }}>
+            <SyncSpinner size={9} />
+            <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)' }}>
+              Syncing live data…
+            </span>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <SkeletonBlock width={56} height={30} radius={6} />
+          <SkeletonBlock width={64} height={30} radius={6} />
+        </div>
+      </div>
+
+      {/* KPI grid — 5 cards */}
+      <div className="kpi-grid">
+        {[...Array(5)].map((_, i) => <SkeletonKPI key={i} />)}
+      </div>
+
+      {/* Charts row */}
+      <div className="grid-2-1 fade-in fade-in-1">
+        <div className="card">
+          <div className="card-header">
+            <SkeletonBlock width={160} height={12} />
+            <SkeletonBlock width={56} height={10} />
+          </div>
+          <SkeletonChart height={170} />
+        </div>
+        <div className="card">
+          <div className="card-header">
+            <SkeletonBlock width={120} height={12} />
+          </div>
+          <SkeletonDonut size={110} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
+            {['Meta', 'TikTok', 'Snapchat'].map(p => (
+              <div key={p} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <SkeletonBlock width={56} height={9} />
+                <SkeletonBlock width={40} height={9} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Anomalies + Platform ROAS */}
+      <div className="grid-2 fade-in fade-in-2">
+        <div className="card">
+          <div className="card-header">
+            <SkeletonBlock width={140} height={12} />
+            <SkeletonBlock width={64} height={18} radius={10} />
+          </div>
+          <SkeletonCardList count={3} height={72} />
+        </div>
+        <div className="card">
+          <div className="card-header">
+            <SkeletonBlock width={110} height={12} />
+            <SkeletonBlock width={40} height={10} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
+            {[80, 55, 40].map((w, i) => (
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <SkeletonBlock width={44} height={9} />
+                  <SkeletonBlock width={30} height={9} />
+                </div>
+                <SkeletonBlock width={`${w}%`} height={6} radius={3} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Top campaigns table */}
+      <div className="card fade-in fade-in-3" style={{ marginBottom: 20 }}>
+        <div className="card-header">
+          <SkeletonBlock width={180} height={12} />
+        </div>
+        <SkeletonTable rows={5} />
+      </div>
+    </div>
+  );
+}
+
+/* Generic page skeleton — used by Actions, Campaigns, Creative, Telegram, Audit */
+function SkeletonGenericPage({ title }) {
+  return (
+    <div className="skeleton-page">
+      <div className="page-header">
+        <div>
+          <div className="page-title">{title}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 5 }}>
+            <SyncSpinner size={9} />
+            <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)' }}>
+              Syncing live data…
+            </span>
+          </div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="card">
+          <div className="card-header">
+            <SkeletonBlock width={140} height={12} />
+            <SkeletonBlock width={80} height={26} radius={6} />
+          </div>
+          <SkeletonCardList count={4} height={80} />
+        </div>
+        <div className="card">
+          <div className="card-header"><SkeletonBlock width={100} height={12} /></div>
+          <SkeletonCardList count={3} height={60} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Export ────────────────────────────────────────────── */
 Object.assign(window, {
-  Sidebar, KPICard, Sparkline, AreaChart, HBar, DonutChart,
+  Sidebar, MobileTopbar, KPICard, Sparkline, AreaChart, HBar, DonutChart,
   PlatformTag, TierBadge, StatusBadge, TrendArrow,
   formatNum, formatCompact, formatCurrency, timeAgo,
   NAV_ITEMS,
+  // Skeleton system
+  SkeletonBlock, SkeletonKPI, SkeletonChart, SkeletonTable,
+  SkeletonCardList, SkeletonDonut, SkeletonOverview, SkeletonGenericPage,
+  SyncSpinner,
 });

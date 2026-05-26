@@ -1,38 +1,3 @@
-/* ── Loading Indicator ───────────────────────────────────── */
-function LoadingScreen() {
-  return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-    }}>
-      <div style={{
-        width: 40, height: 40,
-        background: 'linear-gradient(135deg, var(--accent) 0%, oklch(0.65 0.16 55) 100%)',
-        borderRadius: 10,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 18, fontWeight: 700,
-        color: 'var(--text-inverse)',
-        fontFamily: 'var(--font-display)',
-        animation: 'adp-spin 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite, adp-glow 2s ease-in-out infinite',
-      }}>▲</div>
-      <style>{`
-        @keyframes adp-spin {
-          from { transform: rotate(0deg); }
-          to   { transform: rotate(360deg); }
-        }
-        @keyframes adp-glow {
-          0%, 100% { box-shadow: 0 0 16px oklch(0.75 0.14 75 / 0.25); }
-          50%       { box-shadow: 0 0 32px oklch(0.75 0.14 75 / 0.45); }
-        }
-        @keyframes adp-dashboard-in {
-          from { opacity: 0; }
-          to   { opacity: 1; }
-        }
-      `}</style>
-    </div>
-  );
-}
-
 /* ── Login Page ────────────────────────────────────────── */
 function LoginPage({ onLogin }) {
   const [email, setEmail] = useState('');
@@ -212,68 +177,40 @@ function App() {
   const [activePage, setActivePage] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  useEffect(() => {
-    if (!isLoggedIn) return;
-    setDataReady(false);
+  const doLoad = () => {
     setLoadError('');
     window.AdPilotAPI.loadDashboardData()
       .then(() => setDataReady(true))
       .catch((err) => setLoadError(err.message || 'Failed to load dashboard'));
+  };
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    setDataReady(false);
+    doLoad();
   }, [isLoggedIn]);
 
   const handleLogin = () => setIsLoggedIn(true);
-
   const handleLogout = () => {
     window.AdPilotAPI.auth.clear();
     setIsLoggedIn(false);
     setDataReady(false);
+    setLoadError('');
   };
 
-  if (!isLoggedIn) {
-    return <LoginPage onLogin={handleLogin} />;
-  }
+  if (!isLoggedIn) return <LoginPage onLogin={handleLogin} />;
 
-  if (loadError) {
-    return (
-      <div style={{
-        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'var(--bg-root)', flexDirection: 'column', gap: 16,
-      }}>
-        <div style={{
-          width: 44, height: 44,
-          background: 'linear-gradient(135deg, var(--accent) 0%, oklch(0.65 0.16 55) 100%)',
-          borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 20, color: 'var(--text-inverse)', marginBottom: 4,
-        }}>▲</div>
-        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>Connection failed</div>
-        <div style={{ fontSize: 12, color: 'var(--text-tertiary)', maxWidth: 320, textAlign: 'center', lineHeight: 1.5 }}>{loadError}</div>
-        <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-          <button className="btn btn-primary btn-sm" onClick={() => {
-            setLoadError('');
-            setDataReady(false);
-            window.AdPilotAPI.loadDashboardData()
-              .then(() => setDataReady(true))
-              .catch((err) => setLoadError(err.message || 'Failed to load dashboard'));
-          }}>Retry</button>
-          <button className="btn btn-ghost btn-sm" onClick={handleLogout}>Sign out</button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!dataReady) {
-    return <LoadingScreen />;
-  }
+  const isLoading = !dataReady && !loadError;
 
   const renderPage = () => {
     switch (activePage) {
-      case 'overview': return <OverviewPage />;
-      case 'actions': return <ActionsPage />;
-      case 'campaigns': return <CampaignsPage />;
-      case 'creative': return <CreativePage />;
-      case 'telegram': return <TelegramPage />;
-      case 'audit': return <AuditPage />;
-      default: return <OverviewPage />;
+      case 'overview':  return <OverviewPage  isLoading={isLoading} />;
+      case 'actions':   return <ActionsPage   isLoading={isLoading} />;
+      case 'campaigns': return <CampaignsPage isLoading={isLoading} />;
+      case 'creative':  return <CreativePage  isLoading={isLoading} />;
+      case 'telegram':  return <TelegramPage  isLoading={isLoading} />;
+      case 'audit':     return <AuditPage     isLoading={isLoading} />;
+      default:          return <OverviewPage  isLoading={isLoading} />;
     }
   };
 
@@ -290,6 +227,35 @@ function App() {
         onClose={() => setSidebarOpen(false)}
       />
       <main className="main-content" key={activePage}>
+        {/* Inline error banner — non-blocking, retryable */}
+        {loadError && (
+          <div style={{
+            margin: '24px 24px 0',
+            padding: '12px 16px',
+            background: 'var(--danger-bg)',
+            border: '1px solid oklch(0.65 0.2 20 / 0.25)',
+            borderRadius: 'var(--radius-sm)',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 13, color: 'var(--danger)' }}>⚠</span>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--danger)' }}>Connection failed</div>
+                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{loadError}</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+              <button className="btn btn-ghost btn-sm" style={{ fontSize: 11 }}
+                onClick={() => { setLoadError(''); doLoad(); }}>
+                Retry
+              </button>
+              <button className="btn btn-ghost btn-sm" style={{ fontSize: 11, color: 'var(--text-tertiary)' }}
+                onClick={handleLogout}>
+                Sign out
+              </button>
+            </div>
+          </div>
+        )}
         {renderPage()}
       </main>
     </div>
