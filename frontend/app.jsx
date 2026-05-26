@@ -177,17 +177,13 @@ function App() {
   const [activePage, setActivePage] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const doLoad = () => {
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    setDataReady(false);
     setLoadError('');
     window.AdPilotAPI.loadDashboardData()
       .then(() => setDataReady(true))
       .catch((err) => setLoadError(err.message || 'Failed to load dashboard'));
-  };
-
-  useEffect(() => {
-    if (!isLoggedIn) return;
-    setDataReady(false);
-    doLoad();
   }, [isLoggedIn]);
 
   const handleLogin = () => setIsLoggedIn(true);
@@ -200,21 +196,48 @@ function App() {
 
   if (!isLoggedIn) return <LoginPage onLogin={handleLogin} />;
 
-  const isLoading = !dataReady && !loadError;
-
   const renderPage = () => {
     switch (activePage) {
-      case 'overview':  return <OverviewPage  isLoading={isLoading} />;
-      case 'actions':   return <ActionsPage   isLoading={isLoading} />;
-      case 'campaigns': return <CampaignsPage isLoading={isLoading} />;
-      case 'creative':  return <CreativePage  isLoading={isLoading} />;
-      case 'telegram':  return <TelegramPage  isLoading={isLoading} />;
-      case 'audit':     return <AuditPage     isLoading={isLoading} />;
-      default:          return <OverviewPage  isLoading={isLoading} />;
+      case 'overview':  return <OverviewPage />;
+      case 'actions':   return <ActionsPage />;
+      case 'campaigns': return <CampaignsPage />;
+      case 'creative':  return <CreativePage />;
+      case 'telegram':  return <TelegramPage />;
+      case 'audit':     return <AuditPage />;
+      default:          return <OverviewPage />;
     }
   };
 
   const navigate = (page) => { setActivePage(page); setSidebarOpen(false); };
+
+  // Skeleton loading — sidebar shows instantly, content area shows shimmer cards
+  const mainContent = () => {
+    if (loadError) return (
+      <div style={{ margin: '24px', padding: '14px 18px', background: 'var(--danger-bg)',
+        border: '1px solid oklch(0.65 0.2 20 / 0.25)', borderRadius: 'var(--radius-sm)',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 13, color: 'var(--danger)' }}>⚠</span>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--danger)' }}>Connection failed</div>
+            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{loadError}</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+          <button className="btn btn-ghost btn-sm" style={{ fontSize: 11 }} onClick={() => {
+            setLoadError(''); setDataReady(false);
+            window.AdPilotAPI.loadDashboardData()
+              .then(() => setDataReady(true))
+              .catch((err) => setLoadError(err.message || 'Failed to load dashboard'));
+          }}>Retry</button>
+          <button className="btn btn-ghost btn-sm" style={{ fontSize: 11, color: 'var(--text-tertiary)' }}
+            onClick={handleLogout}>Sign out</button>
+        </div>
+      </div>
+    );
+    if (!dataReady) return <SkeletonOverview />;
+    return renderPage();
+  };
 
   return (
     <div className="app-layout" style={{ animation: 'adp-dashboard-in 0.45s ease forwards' }}>
@@ -226,37 +249,8 @@ function App() {
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
-      <main className="main-content" key={activePage}>
-        {/* Inline error banner — non-blocking, retryable */}
-        {loadError && (
-          <div style={{
-            margin: '24px 24px 0',
-            padding: '12px 16px',
-            background: 'var(--danger-bg)',
-            border: '1px solid oklch(0.65 0.2 20 / 0.25)',
-            borderRadius: 'var(--radius-sm)',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 13, color: 'var(--danger)' }}>⚠</span>
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--danger)' }}>Connection failed</div>
-                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{loadError}</div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-              <button className="btn btn-ghost btn-sm" style={{ fontSize: 11 }}
-                onClick={() => { setLoadError(''); doLoad(); }}>
-                Retry
-              </button>
-              <button className="btn btn-ghost btn-sm" style={{ fontSize: 11, color: 'var(--text-tertiary)' }}
-                onClick={handleLogout}>
-                Sign out
-              </button>
-            </div>
-          </div>
-        )}
-        {renderPage()}
+      <main className="main-content" key={dataReady ? activePage : '__loading'}>
+        {mainContent()}
       </main>
     </div>
   );

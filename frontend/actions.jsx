@@ -1,8 +1,7 @@
 /* Actions & Approval Queue Page */
-function ActionsPage({ isLoading = false }) {
+function ActionsPage() {
   const [filter, setFilter] = useState('all');
   const [actionStates, setActionStates] = useState({});
-  if (isLoading) return <SkeletonGenericPage title="Actions" />;
 
   const handleAction = (actionId, decision) => {
     setActionStates(prev => ({ ...prev, [actionId]: decision }));

@@ -1,7 +1,6 @@
 /* Creative Hub Page */
-function CreativePage({ isLoading = false }) {
+function CreativePage() {
   const [selectedHook, setSelectedHook] = useState('all');
-  if (isLoading) return <SkeletonGenericPage title="Creative Hub" />;
   const hooks = ['all', 'pain_point', 'social_proof', 'scarcity', 'identity', 'curiosity'];
   const hookLabels = { all: 'All', pain_point: 'Pain Point', social_proof: 'Social Proof', scarcity: 'Scarcity', identity: 'Identity', curiosity: 'Curiosity' };
 
