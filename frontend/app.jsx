@@ -1,3 +1,108 @@
+/* ── Loading Screen ─────────────────────────────────────── */
+function LoadingScreen() {
+  const [msgIdx, setMsgIdx] = useState(0);
+  const [dots, setDots] = useState(1);
+
+  const messages = [
+    'Syncing campaign intelligence',
+    'Loading operator workspace',
+    'Connecting Meta · TikTok · Snapchat',
+    'Preparing analytics engine',
+    'Calibrating bid thresholds',
+  ];
+
+  useEffect(() => {
+    const msgTimer = setInterval(() => setMsgIdx(i => (i + 1) % messages.length), 2000);
+    const dotTimer = setInterval(() => setDots(d => d === 3 ? 1 : d + 1), 500);
+    return () => { clearInterval(msgTimer); clearInterval(dotTimer); };
+  }, []);
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0,
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      background: 'var(--bg-root)',
+      userSelect: 'none',
+    }}>
+      {/* Ambient radial glow */}
+      <div style={{
+        position: 'absolute',
+        top: '40%', left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: 520, height: 520,
+        borderRadius: '50%',
+        background: 'radial-gradient(circle, oklch(0.75 0.14 75 / 0.07) 0%, transparent 65%)',
+        pointerEvents: 'none',
+      }} />
+
+      {/* Spinning brand icon */}
+      <div style={{
+        width: 68, height: 68,
+        background: 'linear-gradient(135deg, var(--accent) 0%, oklch(0.65 0.16 55) 100%)',
+        borderRadius: 18,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 30, fontWeight: 700,
+        color: 'var(--text-inverse)',
+        fontFamily: 'var(--font-display)',
+        animation: 'adp-spin 1.8s linear infinite, adp-glow 2.4s ease-in-out infinite',
+        marginBottom: 28,
+        flexShrink: 0,
+      }}>▲</div>
+
+      {/* Brand wordmark */}
+      <div style={{
+        fontFamily: 'var(--font-display)',
+        fontSize: 24, fontWeight: 700,
+        letterSpacing: '-0.03em',
+        marginBottom: 6,
+      }}>
+        ad<span style={{ color: 'var(--accent)' }}>pilot</span>
+      </div>
+
+      {/* Initializing status */}
+      <div style={{
+        fontSize: 13, color: 'var(--text-tertiary)',
+        fontFamily: 'var(--font-body)',
+        marginBottom: 28,
+        letterSpacing: '-0.01em',
+      }}>
+        Initializing AI Runtime{'.'.repeat(dots)}
+      </div>
+
+      {/* Cycling system message — keyed so each fades in */}
+      <div key={msgIdx} style={{
+        fontSize: 11,
+        fontFamily: 'var(--font-mono)',
+        color: 'var(--text-tertiary)',
+        letterSpacing: '0.03em',
+        animation: 'adp-msg-in 0.35s ease forwards',
+      }}>
+        {messages[msgIdx]}
+      </div>
+
+      <style>{`
+        @keyframes adp-spin {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+        @keyframes adp-glow {
+          0%, 100% { box-shadow: 0 0 24px oklch(0.75 0.14 75 / 0.28), 0 8px 32px oklch(0 0 0 / 0.3); }
+          50%       { box-shadow: 0 0 52px oklch(0.75 0.14 75 / 0.50), 0 8px 32px oklch(0 0 0 / 0.3); }
+        }
+        @keyframes adp-msg-in {
+          from { opacity: 0; transform: translateY(5px); }
+          to   { opacity: 0.55; transform: translateY(0); }
+        }
+        @keyframes adp-dashboard-in {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 /* ── Login Page ────────────────────────────────────────── */
 function LoginPage({ onLogin }) {
   const [email, setEmail] = useState('');
@@ -212,12 +317,7 @@ function App() {
   }
 
   if (!dataReady) {
-    return (
-      <div style={{
-        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'var(--bg-root)', color: 'var(--text-tertiary)', fontSize: 13,
-      }}>Loading dashboard…</div>
-    );
+    return <LoadingScreen />;
   }
 
   const renderPage = () => {
@@ -235,7 +335,7 @@ function App() {
   const navigate = (page) => { setActivePage(page); setSidebarOpen(false); };
 
   return (
-    <div className="app-layout">
+    <div className="app-layout" style={{ animation: 'adp-dashboard-in 0.45s ease forwards' }}>
       <MobileTopbar activePage={activePage} onMenuClick={() => setSidebarOpen(true)} />
       <Sidebar
         activePage={activePage}
