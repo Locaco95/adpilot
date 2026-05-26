@@ -257,11 +257,13 @@ export function OverviewPage() {
   }, [showWindowMenu]);
 
   if (summaryQ.isLoading || dailyQ.isLoading) return <SkeletonOverview />;
-  if (summaryQ.isError) return (
+  if (summaryQ.isError || dailyQ.isError) return (
     <div style={{ padding: "24px", color: "var(--danger)" }}>
-      Failed to load: {summaryQ.error?.message}
+      Failed to load overview data:{" "}
+      {(summaryQ.error ?? dailyQ.error)?.message ?? "Unknown error"}
     </div>
   );
+  if (!summaryQ.data || !dailyQ.data) return <SkeletonOverview />;
 
   const summary: OverviewSummary = summaryQ.data!;
   const daily: DailyMetrics = dailyQ.data!;
