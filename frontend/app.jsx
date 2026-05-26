@@ -237,11 +237,26 @@ function App() {
     return (
       <div style={{
         minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'var(--bg-root)', color: 'var(--danger)', flexDirection: 'column', gap: 16,
+        background: 'var(--bg-root)', flexDirection: 'column', gap: 16,
       }}>
-        <div style={{ fontSize: 16, fontWeight: 600 }}>Failed to load dashboard</div>
-        <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>{loadError}</div>
-        <button className="btn btn-ghost btn-sm" onClick={handleLogout}>Sign out</button>
+        <div style={{
+          width: 44, height: 44,
+          background: 'linear-gradient(135deg, var(--accent) 0%, oklch(0.65 0.16 55) 100%)',
+          borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 20, color: 'var(--text-inverse)', marginBottom: 4,
+        }}>▲</div>
+        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>Connection failed</div>
+        <div style={{ fontSize: 12, color: 'var(--text-tertiary)', maxWidth: 320, textAlign: 'center', lineHeight: 1.5 }}>{loadError}</div>
+        <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+          <button className="btn btn-primary btn-sm" onClick={() => {
+            setLoadError('');
+            setDataReady(false);
+            window.AdPilotAPI.loadDashboardData()
+              .then(() => setDataReady(true))
+              .catch((err) => setLoadError(err.message || 'Failed to load dashboard'));
+          }}>Retry</button>
+          <button className="btn btn-ghost btn-sm" onClick={handleLogout}>Sign out</button>
+        </div>
       </div>
     );
   }

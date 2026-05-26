@@ -35,8 +35,22 @@
     return data;
   }
 
+  async function fetchWithTimeout(url, options, ms = 15000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), ms);
+    try {
+      const res = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(timer);
+      return res;
+    } catch (e) {
+      clearTimeout(timer);
+      if (e.name === 'AbortError') throw new Error('Request timed out — backend may be waking up, please retry');
+      throw e;
+    }
+  }
+
   async function apiGet(path) {
-    const res = await fetch(`${API_BASE}${path}`, {
+    const res = await fetchWithTimeout(`${API_BASE}${path}`, {
       headers: {
         'Authorization': `Bearer ${auth.getToken()}`,
         'Content-Type': 'application/json',
@@ -47,12 +61,12 @@
       window.location.reload();
       return null;
     }
-    if (!res.ok) throw new Error(`GET ${path} -> ${res.status}`);
+    if (!res.ok) throw new Error(`GET ${path} → ${res.status}`);
     return res.json();
   }
 
   async function apiPost(path, body) {
-    const res = await fetch(`${API_BASE}${path}`, {
+    const res = await fetchWithTimeout(`${API_BASE}${path}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${auth.getToken()}`,
