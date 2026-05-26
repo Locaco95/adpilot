@@ -34,13 +34,6 @@ function Sidebar({ activePage, onNavigate, onLogout }) {
         </nav>
       </div>
       <div className="sidebar-footer">
-        <div className="sidebar-status">
-          <span className="status-dot"></span>
-          <span>All systems nominal</span>
-        </div>
-        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 6 }}>
-          Last sync: 2 min ago
-        </div>
         {onLogout && (
           <button onClick={onLogout} style={{
             marginTop: 10, background: 'none', border: '1px solid var(--border-subtle)',
