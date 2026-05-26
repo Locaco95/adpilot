@@ -39,61 +39,56 @@ export interface TokenResponse {
 }
 
 /* ── Overview ─────────────────────────────────────────────────── */
-export interface PlatformBreakdown {
+export interface OverviewSummary {
   spend: number;
+  spendDelta: number;
+  conversions: number;
+  convDelta: number;
+  revenue: number;
+  revDelta: number;
+  roas: number;
+  roasDelta: number;
+  cpa: number;
+  cpaDelta: number;
   impressions: number;
   clicks: number;
-  conversions: number;
-  revenue: number;
-  roas: number;
-  cpa: number;
   ctr: number;
+  target_cpa: number;
+  target_roas: number;
+  daily_budget: number;
 }
 
-export interface OverviewSummary {
-  total_spend: number;
-  total_revenue: number;
-  blended_roas: number;
-  blended_cpa: number;
-  total_conversions: number;
-  active_campaigns: number;
-  spend_delta: number;
-  roas_delta: number;
-  cpa_delta: number;
-  conv_delta: number;
-  meta: PlatformBreakdown;
-  tiktok: PlatformBreakdown;
-  snapchat: PlatformBreakdown;
-}
-
-export interface DailyMetricPoint {
-  date: string;
+export interface DailyPlatformBreakdown {
   meta: number;
   tiktok: number;
   snapchat: number;
   total: number;
 }
 
-export interface DailyMetrics {
-  spend: DailyMetricPoint[];
-  roas: DailyMetricPoint[];
-  conversions: DailyMetricPoint[];
-  cpa: DailyMetricPoint[];
+export interface DailyMetricDay {
+  date: string;
+  label: string;
+  spend: DailyPlatformBreakdown;
+  conversions: DailyPlatformBreakdown;
+  revenue: DailyPlatformBreakdown;
+  roas: number;
+  cpa: number;
 }
+
+export type DailyMetrics = DailyMetricDay[];
 
 /* ── Anomaly ──────────────────────────────────────────────────── */
 export interface Anomaly {
   id: string;
   severity: AnomalySeverity;
-  campaign: string;
   platform: Platform;
+  timestamp: string;
+  title: string;
+  detail: string;
   metric: string;
-  value: number;
-  baseline: number;
-  z_score: number;
-  detected_at: string;
-  resolved_at: string | null;
-  message: string;
+  value: string;    // API returns pre-formatted strings like "$24.29"
+  baseline: string; // API returns pre-formatted strings like "$14.80"
+  zScore: number;
 }
 
 /* ── Campaign ─────────────────────────────────────────────────── */

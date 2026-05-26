@@ -5,7 +5,7 @@ import { useCampaigns } from "@/hooks/useCampaigns";
 import { TARGET_CPA, TARGET_ROAS } from "@/lib/constants";
 import { formatCurrency } from "@/lib/format";
 import { StatusBadge, TrendArrow, PlatformTag, SkeletonOverview, SyncSpinner } from "@/components/ui";
-import type { Anomaly, DailyMetrics, OverviewSummary, Campaign } from "@/types";
+import type { Anomaly, DailyMetrics, DailyMetricDay, OverviewSummary, Campaign } from "@/types";
 
 /* ── Helpers ─────────────────────────────────────────────── */
 function safeNum(n: unknown): number {
@@ -235,13 +235,13 @@ function AnomalyRow({ anomaly }: { anomaly: Anomaly }) {
           <PlatformTag platform={anomaly.platform} />
           <span style={{ fontSize: 13, fontWeight: 600 }}>{anomaly.metric}</span>
         </div>
-        <span className="text-xs text-tertiary">{timeAgo(anomaly.detected_at)}</span>
+        <span className="text-xs text-tertiary">{timeAgo(anomaly.timestamp)}</span>
       </div>
-      <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>{anomaly.message}</div>
+      <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>{anomaly.detail || anomaly.title}</div>
       <div className="flex items-center gap-8 mt-8" style={{ gap: 12, marginTop: 8 }}>
-        <span className="text-mono text-xs">Value: <strong style={{ color: sev.color }}>{safeNum(anomaly.value).toFixed(2)}</strong></span>
-        <span className="text-mono text-xs">Baseline: {safeNum(anomaly.baseline).toFixed(2)}</span>
-        <span className="text-mono text-xs">z={safeNum(anomaly.z_score).toFixed(1)}</span>
+        <span className="text-mono text-xs">Value: <strong style={{ color: sev.color }}>{anomaly.value}</strong></span>
+        <span className="text-mono text-xs">Baseline: {anomaly.baseline}</span>
+        <span className="text-mono text-xs">z={safeNum(anomaly.zScore).toFixed(1)}</span>
       </div>
     </div>
   );
@@ -274,38 +274,41 @@ export function OverviewPage() {
   if (!summaryQ.data || !dailyQ.data) return <SkeletonOverview />;
 
   const summary: OverviewSummary = summaryQ.data!;
-  const daily: DailyMetrics = dailyQ.data!;
+  const daily: DailyMetrics = dailyQ.data ?? [];
   const anomalies: Anomaly[] = anomaliesQ.data ?? [];
   const campaigns: Campaign[] = campaignsQ.data ?? [];
 
-  // Build spark arrays from daily metrics
-  const spendSparkData = daily.spend?.map((d) => d.total) ?? [];
-  const convSparkData = daily.conversions?.map((d) => d.total) ?? [];
-  const roasSparkData = daily.roas?.map((d) => d.total) ?? [];
-  const cpaSparkData = daily.cpa?.map((d) => d.total) ?? [];
+  // Build spark arrays from daily metrics (API returns array of day objects)
+  const spendSparkData = daily.map((d: DailyMetricDay) => d.spend.total);
+  const convSparkData  = daily.map((d: DailyMetricDay) => d.conversions.total);
+  const roasSparkData  = daily.map((d: DailyMetricDay) => d.roas);
+  const cpaSparkData   = daily.map((d: DailyMetricDay) => d.cpa);
 
   // Chart data for stacked area
-  const chartData = daily.spend?.map((d) => ({
-    label: new Date(d.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-    meta: d.meta,
-    tiktok: d.tiktok,
-    snapchat: d.snapchat,
-  })) ?? [];
+  const chartData = daily.map((d: DailyMetricDay) => ({
+    label: d.label,
+    meta: d.spend.meta,
+    tiktok: d.spend.tiktok,
+    snapchat: d.spend.snapchat,
+  }));
 
   const platformSpendData = [
-    { label: "Meta",     value: daily.spend?.reduce((s, d) => s + d.meta, 0) ?? 0,     color: "var(--meta)" },
-    { label: "TikTok",   value: daily.spend?.reduce((s, d) => s + d.tiktok, 0) ?? 0,   color: "var(--tiktok)" },
-    { label: "Snapchat", value: daily.spend?.reduce((s, d) => s + d.snapchat, 0) ?? 0, color: "var(--snapchat)" },
+    { label: "Meta",     value: daily.reduce((s, d) => s + d.spend.meta, 0),     color: "var(--meta)" },
+    { label: "TikTok",   value: daily.reduce((s, d) => s + d.spend.tiktok, 0),   color: "var(--tiktok)" },
+    { label: "Snapchat", value: daily.reduce((s, d) => s + d.spend.snapchat, 0), color: "var(--snapchat)" },
   ];
 
-  const platformRoas = ["meta", "tiktok", "snapchat"].map((p) => {
-    const rev = daily.roas?.reduce((s, d) => s + (d[p as keyof typeof d] as number ?? 0), 0) ?? 0;
-    const roas = rev;
+  // Compute per-platform average ROAS from campaigns
+  const platformRoas = (["meta", "tiktok", "snapchat"] as const).map((p) => {
+    const plat = campaigns.filter((c) => c.platform === p);
+    const avgRoas = plat.length
+      ? plat.reduce((s, c) => s + safeNum(c.roas), 0) / plat.length
+      : 0;
     return {
       label: p.charAt(0).toUpperCase() + p.slice(1),
       color: `var(--${p})`,
-      value: roas,
-      display: safeNum(roas).toFixed(2) + "×",
+      value: avgRoas,
+      display: safeNum(avgRoas).toFixed(2) + "×",
     };
   });
 
@@ -362,12 +365,12 @@ export function OverviewPage() {
 
       {/* KPI Grid */}
       <div className="kpi-grid fade-in">
-        <KPICard label="Total Spend" value={summary.total_spend} delta={summary.spend_delta} prefix="$" sparkData={spendSparkData} />
-        <KPICard label="Conversions" value={summary.total_conversions} delta={summary.conv_delta} sparkData={convSparkData} accentColor="var(--success)" />
-        <KPICard label="Revenue" value={summary.total_revenue} delta={0} prefix="$" accentColor="var(--success)" />
-        <KPICard label="Blended ROAS" value={safeNum(summary.blended_roas).toFixed(2)} delta={summary.roas_delta} suffix="×" sparkData={roasSparkData} accentColor="var(--accent)" />
-        <KPICard label="Blended CPA" value={safeNum(summary.blended_cpa).toFixed(2)} delta={-safeNum(summary.cpa_delta)} prefix="$" sparkData={cpaSparkData}
-          accentColor={safeNum(summary.blended_cpa) > TARGET_CPA ? "var(--danger)" : "var(--success)"} />
+        <KPICard label="Total Spend" value={summary.spend} delta={summary.spendDelta} prefix="$" sparkData={spendSparkData} />
+        <KPICard label="Conversions" value={summary.conversions} delta={summary.convDelta} sparkData={convSparkData} accentColor="var(--success)" />
+        <KPICard label="Revenue" value={summary.revenue} delta={summary.revDelta} prefix="$" accentColor="var(--success)" />
+        <KPICard label="Blended ROAS" value={safeNum(summary.roas).toFixed(2)} delta={summary.roasDelta} suffix="×" sparkData={roasSparkData} accentColor="var(--accent)" />
+        <KPICard label="Blended CPA" value={safeNum(summary.cpa).toFixed(2)} delta={-safeNum(summary.cpaDelta)} prefix="$" sparkData={cpaSparkData}
+          accentColor={safeNum(summary.cpa) > TARGET_CPA ? "var(--danger)" : "var(--success)"} />
       </div>
 
       {/* Charts row */}
@@ -388,7 +391,7 @@ export function OverviewPage() {
             <span className="card-title">Spend Distribution</span>
           </div>
           <DonutChart segments={platformSpendData} centerLabel={`${selectedWindow}d total`}
-            centerValue={formatCurrency(summary.total_spend)} size={110} />
+            centerValue={formatCurrency(summary.spend)} size={110} />
         </div>
       </div>
 
@@ -454,7 +457,7 @@ export function OverviewPage() {
                 <td className="mono">{c.conv7d}</td>
                 <td className="mono" style={{ color: safeNum(c.cpa) > TARGET_CPA ? "var(--danger)" : "var(--success)" }}>${safeNum(c.cpa).toFixed(2)}</td>
                 <td className="mono" style={{ color: safeNum(c.roas) >= TARGET_ROAS ? "var(--success)" : safeNum(c.roas) >= 1.5 ? "var(--warning)" : "var(--danger)" }}>{safeNum(c.roas).toFixed(2)}×</td>
-                <td className="mono">{safeNum(c.ctr).toFixed(1)}%</td>
+                <td className="mono">{(safeNum(c.ctr) * 100).toFixed(2)}%</td>
                 <td className="mono">{safeNum(c.freq).toFixed(1)}</td>
                 <td><TrendArrow trend={c.trend} /></td>
               </tr>

@@ -114,7 +114,7 @@ export function CampaignsPage() {
                 <td className="mono" style={{ color: (Number(c.roas)||0) >= TARGET_ROAS ? "var(--success)" : (Number(c.roas)||0) >= 1.5 ? "var(--warning)" : "var(--danger)" }}>
                   {(Number(c.roas)||0).toFixed(2)}×
                 </td>
-                <td className="mono">{(Number(c.ctr)||0).toFixed(1)}%</td>
+                <td className="mono">{((Number(c.ctr)||0) * 100).toFixed(2)}%</td>
                 <td className="mono" style={{ color: (Number(c.freq)||0) > 6 ? "var(--danger)" : (Number(c.freq)||0) > 4 ? "var(--warning)" : "var(--text-secondary)" }}>
                   {(Number(c.freq)||0).toFixed(1)}
                 </td>
