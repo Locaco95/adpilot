@@ -428,7 +428,7 @@ export function OverviewPage() {
       </div>
 
       {/* Top Campaigns Table */}
-      <div className="card fade-in fade-in-3" style={{ marginBottom: 20 }}>
+      <div className="card fade-in fade-in-3">
         <div className="card-header">
           <span className="card-title">Top Campaigns by ROAS</span>
         </div>

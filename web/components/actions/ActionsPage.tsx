@@ -187,7 +187,7 @@ export function ActionsPage() {
       </div>
 
       {/* Decision rules */}
-      <div className="card mt-16 fade-in fade-in-3" style={{ marginTop: 20 }}>
+      <div className="card fade-in fade-in-3" style={{ marginTop: 16 }}>
         <div className="card-header">
           <span className="card-title">Decision Rules Reference</span>
         </div>

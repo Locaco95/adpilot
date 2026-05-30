@@ -126,7 +126,7 @@ export function CampaignsPage() {
       </div>
 
       {/* Threshold reference */}
-      <div className="flex gap-12 mt-16 fade-in fade-in-3" style={{ gap: 12, marginTop: 20 }}>
+      <div className="flex gap-12 fade-in fade-in-3" style={{ gap: 12, marginTop: 16 }}>
         {[
           { label: "Target CPA",  value: `$${TARGET_CPA}`,                             color: "var(--accent)" },
           { label: "Target ROAS", value: `${TARGET_ROAS}×`,                            color: "var(--accent)" },

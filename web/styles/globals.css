@@ -171,7 +171,7 @@ body {
 }
 
 .sidebar-section {
-  padding: 16px 12px 8px;
+  padding: 12px 12px 6px;
 }
 
 .sidebar-section-label {
@@ -237,7 +237,7 @@ body {
 
 .sidebar-footer {
   margin-top: auto;
-  padding: 16px;
+  padding: 12px;
   border-top: 1px solid var(--border-subtle);
 }
 
@@ -267,7 +267,7 @@ body {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 24px 28px;
+  padding: 20px 28px 24px;
   scrollbar-width: thin;
   scrollbar-color: var(--border-default) transparent;
 }
@@ -276,7 +276,7 @@ body {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   gap: 16px;
 }
 
@@ -308,7 +308,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .card-title {
@@ -324,8 +324,8 @@ body {
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: clamp(10px, 1vw, 16px);
-  margin-bottom: 20px;
+  gap: clamp(8px, 1vw, 14px);
+  margin-bottom: 16px;
 }
 
 .kpi-card {
@@ -367,10 +367,10 @@ body {
 .kpi-delta.neutral { color: var(--text-tertiary); }
 
 /* Grid layouts */
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
-.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px; }
-.grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 20px; }
-.grid-1-1 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+.grid-2   { display: grid; grid-template-columns: 1fr 1fr;       gap: 14px; margin-bottom: 16px; }
+.grid-3   { display: grid; grid-template-columns: 1fr 1fr 1fr;   gap: 14px; margin-bottom: 16px; }
+.grid-2-1 { display: grid; grid-template-columns: 2fr 1fr;       gap: 14px; margin-bottom: 16px; }
+.grid-1-1 { display: grid; grid-template-columns: 1fr 1fr;       gap: 14px; margin-bottom: 16px; }
 
 /* Badges */
 .badge {
@@ -673,7 +673,7 @@ body {
 
 @media (min-width: 1600px) {
   .kpi-grid { grid-template-columns: repeat(5, 1fr); }
-  .main-content { padding: 28px 40px; }
+  .main-content { padding: 24px 40px 28px; }
 }
 
 @media (max-width: 1023px) {

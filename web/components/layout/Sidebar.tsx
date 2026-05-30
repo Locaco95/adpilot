@@ -38,9 +38,9 @@ function SidebarRuntime() {
       style={{
         background: "oklch(0.16 0.012 260)",
         border: "1px solid var(--border-subtle)",
-        borderRadius: 10,
-        padding: "10px 12px",
-        marginBottom: 8,
+        borderRadius: 8,
+        padding: "9px 11px",
+        marginBottom: 6,
         transition: "box-shadow 0.2s ease",
         cursor: "default",
       }}
@@ -55,7 +55,7 @@ function SidebarRuntime() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          marginBottom: 8,
+          marginBottom: 7,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -97,8 +97,8 @@ function SidebarRuntime() {
         style={{
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
-          gap: "5px 8px",
-          marginBottom: 8,
+          gap: "4px 8px",
+          marginBottom: 7,
         }}
       >
         {[
@@ -175,9 +175,9 @@ function OperatorCard() {
         background:
           "linear-gradient(135deg, oklch(0.18 0.015 260) 0%, oklch(0.16 0.012 240) 100%)",
         border: "1px solid oklch(0.75 0.14 75 / 0.18)",
-        borderRadius: 10,
-        padding: "10px 12px",
-        marginBottom: 8,
+        borderRadius: 8,
+        padding: "9px 11px",
+        marginBottom: 6,
         position: "relative",
         overflow: "hidden",
       }}
@@ -264,12 +264,12 @@ function OperatorCard() {
       </div>
       <div
         style={{
-          marginTop: 9,
-          paddingTop: 8,
+          marginTop: 8,
+          paddingTop: 7,
           borderTop: "1px solid oklch(0.75 0.14 75 / 0.1)",
           display: "flex",
           flexDirection: "column",
-          gap: 4,
+          gap: 3,
         }}
       >
         {[
@@ -376,7 +376,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           </nav>
         </div>
 
-        <div className="sidebar-footer" style={{ paddingTop: 12 }}>
+        <div className="sidebar-footer">
           <SidebarRuntime />
           <OperatorCard />
           <button
