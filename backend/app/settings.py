@@ -29,8 +29,12 @@ class Settings(BaseSettings):
     tiktok_advertiser_id: str = ""
 
     # Snapchat
-    snapchat_access_token: str = ""
+    snapchat_access_token: str = ""           # unused; kept for back-compat
     snapchat_ad_account_id: str = ""
+    snapchat_client_id: str = ""
+    snapchat_client_secret: str = ""
+    snapchat_refresh_token: str = ""
+    snapchat_redirect_uri: str = ""
 
     # Shopify
     shopify_shop_url: str = ""
