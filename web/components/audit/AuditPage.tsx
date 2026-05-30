@@ -36,7 +36,7 @@ export function AuditPage() {
         <button className="btn btn-ghost btn-sm">Export CSV</button>
       </div>
 
-      <div className="card fade-in">
+      <div className="card fade-in" style={{ marginBottom: 24 }}>
         <table className="data-table">
           <thead>
             <tr>

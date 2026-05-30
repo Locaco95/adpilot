@@ -95,7 +95,7 @@ export function TelegramPage() {
         </div>
       </div>
 
-      <div className="grid-2 fade-in" style={{ alignItems: "start" }}>
+      <div className="grid-2 fade-in" style={{ alignItems: "start", marginBottom: 24 }}>
         {/* Chat mockup */}
         <div className="card" style={{ padding: 0, overflow: "hidden" }}>
           <div style={{

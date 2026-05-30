@@ -267,9 +267,18 @@ body {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 20px 28px 24px;
+  padding: 20px 28px 0;
   scrollbar-width: thin;
   scrollbar-color: var(--border-default) transparent;
+}
+
+/* Reliable bottom spacing for overflow-y:auto containers.
+   padding-bottom gets clipped in Chrome/Safari — ::after does not. */
+.main-content::after {
+  content: '';
+  display: block;
+  height: 28px;
+  width: 100%;
 }
 
 .page-header {
@@ -673,7 +682,7 @@ body {
 
 @media (min-width: 1600px) {
   .kpi-grid { grid-template-columns: repeat(5, 1fr); }
-  .main-content { padding: 24px 40px 28px; }
+  .main-content { padding: 24px 40px 0; }
 }
 
 @media (max-width: 1023px) {
@@ -742,7 +751,7 @@ body {
     min-height: calc(100vh - 52px);
     overflow: visible;
     overflow-x: hidden;
-    padding: 16px;
+    padding: 16px 16px 0;
     padding-top: calc(52px + 16px);
   }
   .page-header {
