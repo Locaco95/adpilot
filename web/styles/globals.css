@@ -366,11 +366,11 @@ body {
 .kpi-delta.negative { color: var(--danger); }
 .kpi-delta.neutral { color: var(--text-tertiary); }
 
-/* Grid layouts */
-.grid-2   { display: grid; grid-template-columns: 1fr 1fr;       gap: 14px; margin-bottom: 16px; }
-.grid-3   { display: grid; grid-template-columns: 1fr 1fr 1fr;   gap: 14px; margin-bottom: 16px; }
-.grid-2-1 { display: grid; grid-template-columns: 2fr 1fr;       gap: 14px; margin-bottom: 16px; }
-.grid-1-1 { display: grid; grid-template-columns: 1fr 1fr;       gap: 14px; margin-bottom: 16px; }
+/* Grid layouts — align-items: start so cards size to content, not stretched to tallest sibling */
+.grid-2   { display: grid; grid-template-columns: 1fr 1fr;       gap: 14px; margin-bottom: 16px; align-items: start; }
+.grid-3   { display: grid; grid-template-columns: 1fr 1fr 1fr;   gap: 14px; margin-bottom: 16px; align-items: start; }
+.grid-2-1 { display: grid; grid-template-columns: 2fr 1fr;       gap: 14px; margin-bottom: 16px; align-items: start; }
+.grid-1-1 { display: grid; grid-template-columns: 1fr 1fr;       gap: 14px; margin-bottom: 16px; align-items: start; }
 
 /* Badges */
 .badge {
