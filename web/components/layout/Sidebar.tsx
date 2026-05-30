@@ -4,13 +4,50 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth.store";
 
+/* SVG icons — no Unicode, renders on every OS/font */
+const ICONS = {
+  overview: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+      <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+    </svg>
+  ),
+  actions: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+    </svg>
+  ),
+  campaigns: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+      <line x1="6" y1="20" x2="6" y2="14"/>
+    </svg>
+  ),
+  creative: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+    </svg>
+  ),
+  telegram: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.86 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.77 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+    </svg>
+  ),
+  audit: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+    </svg>
+  ),
+};
+
 const NAV_ITEMS = [
-  { id: "overview",  icon: "◫", label: "Overview",     href: "/overview" },
-  { id: "actions",   icon: "⚡", label: "Actions",      href: "/actions",   badge: 3 },
-  { id: "campaigns", icon: "◩", label: "Campaigns",    href: "/campaigns" },
-  { id: "creative",  icon: "✦", label: "Creative Hub", href: "/creative" },
-  { id: "telegram",  icon: "▷", label: "Telegram",     href: "/telegram" },
-  { id: "audit",     icon: "☰", label: "Audit Log",    href: "/audit" },
+  { id: "overview",  icon: ICONS.overview,  label: "Overview",     href: "/overview" },
+  { id: "actions",   icon: ICONS.actions,   label: "Actions",      href: "/actions",   badge: 3 },
+  { id: "campaigns", icon: ICONS.campaigns, label: "Campaigns",    href: "/campaigns" },
+  { id: "creative",  icon: ICONS.creative,  label: "Creative Hub", href: "/creative" },
+  { id: "telegram",  icon: ICONS.telegram,  label: "Telegram",     href: "/telegram" },
+  { id: "audit",     icon: ICONS.audit,     label: "Audit Log",    href: "/audit" },
 ] as const;
 
 /* ── AI Runtime Widget ───────────────────────────────────── */

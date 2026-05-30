@@ -117,7 +117,7 @@ export function CreativePage() {
       </div>
 
       {/* Guidelines */}
-      <div className="card fade-in fade-in-2" style={{ marginTop: 16 }}>
+      <div className="card fade-in fade-in-2" style={{ marginTop: 16, marginBottom: 24 }}>
         <div className="card-header">
           <span className="card-title">Creative Guidelines</span>
         </div>
