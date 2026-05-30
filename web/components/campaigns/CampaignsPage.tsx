@@ -5,6 +5,7 @@ import { TARGET_CPA, TARGET_ROAS } from "@/lib/constants";
 import { formatCurrency } from "@/lib/format";
 import { StatusBadge, TrendArrow, SkeletonGenericPage } from "@/components/ui";
 import type { Campaign } from "@/types";
+import { SnapchatPanel } from "./SnapchatPanel";
 
 function MiniStat({ label, value, color }: { label: string; value: string | number; color: string }) {
   return (
@@ -20,10 +21,11 @@ export function CampaignsPage() {
   const [sortBy, setSortBy] = useState<keyof Campaign>("roas");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
+  const isSnap = platformFilter === "snapchat";
   const { data: campaigns, isLoading, isError, error } = useCampaigns(platformFilter);
 
-  if (isLoading) return <SkeletonGenericPage title="Campaigns" />;
-  if (isError) return (
+  if (!isSnap && isLoading) return <SkeletonGenericPage title="Campaigns" />;
+  if (!isSnap && isError) return (
     <div style={{ padding: "24px", color: "var(--danger)" }}>Failed to load: {(error as Error)?.message}</div>
   );
 
@@ -68,6 +70,11 @@ export function CampaignsPage() {
         ))}
       </div>
 
+      {/* Snapchat tab: swap to live API data instead of the seeded DB table */}
+      {platformFilter === "snapchat" ? (
+        <SnapchatPanel />
+      ) : (
+      <>
       {/* Summary bar */}
       <div className="flex gap-12 mb-16 fade-in fade-in-1" style={{ gap: 12, marginBottom: 16 }}>
         <MiniStat label="Active"  value={filtered.filter((c) => c.status === "active").length}  color="var(--success)" />
@@ -139,6 +146,8 @@ export function CampaignsPage() {
           </div>
         ))}
       </div>
+      </>
+      )}
     </div>
   );
 }
