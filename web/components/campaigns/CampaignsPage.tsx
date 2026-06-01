@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import React, { useState } from "react";
 import { useCampaigns } from "@/hooks/useCampaigns";
 import { TARGET_CPA, TARGET_ROAS } from "@/lib/constants";
 import { formatCurrency } from "@/lib/format";
@@ -20,6 +20,7 @@ export function CampaignsPage() {
   const [platformFilter, setPlatformFilter] = useState("all");
   const [sortBy, setSortBy] = useState<keyof Campaign>("roas");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
   const isSnap = platformFilter === "snapchat";
   const { data: campaigns, isLoading, isError, error } = useCampaigns(platformFilter);
@@ -90,44 +91,95 @@ export function CampaignsPage() {
 
       {/* Campaign table */}
       <div className="card fade-in fade-in-2">
-        <table className="data-table">
+        <table className="data-table data-table-expandable">
           <thead>
             <tr>
               <th style={{ width: 30 }} />
               <th>Campaign</th>
-              <th>Status</th>
-              <SortHeader col="budget">Budget/d</SortHeader>
-              <SortHeader col="spend7d">7d Spend</SortHeader>
-              <SortHeader col="conv7d">Conv</SortHeader>
-              <SortHeader col="cpa">CPA</SortHeader>
-              <SortHeader col="roas">ROAS</SortHeader>
-              <SortHeader col="ctr">CTR</SortHeader>
-              <SortHeader col="freq">Freq</SortHeader>
-              <th>Trend</th>
+              <th className="col-hide-mobile">Status</th>
+              <th className="col-hide-mobile" onClick={() => handleSort("budget")} style={{ cursor: "pointer", userSelect: "none" }}>Budget/d {sortBy === "budget" ? (sortDir === "desc" ? "↓" : "↑") : ""}</th>
+              <th className="col-hide-mobile" onClick={() => handleSort("spend7d")} style={{ cursor: "pointer", userSelect: "none" }}>7d Spend {sortBy === "spend7d" ? (sortDir === "desc" ? "↓" : "↑") : ""}</th>
+              <th className="col-hide-mobile" onClick={() => handleSort("conv7d")} style={{ cursor: "pointer", userSelect: "none" }}>Conv {sortBy === "conv7d" ? (sortDir === "desc" ? "↓" : "↑") : ""}</th>
+              <th className="col-hide-mobile" onClick={() => handleSort("cpa")} style={{ cursor: "pointer", userSelect: "none" }}>CPA {sortBy === "cpa" ? (sortDir === "desc" ? "↓" : "↑") : ""}</th>
+              <th onClick={() => handleSort("roas")} style={{ cursor: "pointer", userSelect: "none" }}>ROAS {sortBy === "roas" ? (sortDir === "desc" ? "↓" : "↑") : ""}</th>
+              <th className="col-hide-mobile">CTR</th>
+              <th className="col-hide-mobile">Freq</th>
+              <th className="col-hide-mobile">Trend</th>
+              <th className="col-expand-indicator" />
             </tr>
           </thead>
           <tbody>
-            {sorted.map((c) => (
-              <tr key={c.id}>
-                <td><span className={`platform-dot ${c.platform}`} /></td>
-                <td style={{ maxWidth: 260, fontWeight: 500 }} className="truncate">{c.name}</td>
-                <td><StatusBadge status={c.status} /></td>
-                <td className="mono">${c.budget}</td>
-                <td className="mono">{formatCurrency(c.spend7d)}</td>
-                <td className="mono">{c.conv7d}</td>
-                <td className="mono" style={{ color: (Number(c.cpa)||0) > TARGET_CPA * 1.5 ? "var(--danger)" : (Number(c.cpa)||0) > TARGET_CPA ? "var(--warning)" : "var(--success)" }}>
-                  ${(Number(c.cpa)||0).toFixed(2)}
-                </td>
-                <td className="mono" style={{ color: (Number(c.roas)||0) >= TARGET_ROAS ? "var(--success)" : (Number(c.roas)||0) >= 1.5 ? "var(--warning)" : "var(--danger)" }}>
-                  {(Number(c.roas)||0).toFixed(2)}×
-                </td>
-                <td className="mono">{((Number(c.ctr)||0) * 100).toFixed(2)}%</td>
-                <td className="mono" style={{ color: (Number(c.freq)||0) > 6 ? "var(--danger)" : (Number(c.freq)||0) > 4 ? "var(--warning)" : "var(--text-secondary)" }}>
-                  {(Number(c.freq)||0).toFixed(1)}
-                </td>
-                <td><TrendArrow trend={c.trend} /></td>
-              </tr>
-            ))}
+            {sorted.map((c) => {
+              const isExpanded = expandedRow === c.id;
+              const cpaColor = (Number(c.cpa)||0) > TARGET_CPA * 1.5 ? "var(--danger)" : (Number(c.cpa)||0) > TARGET_CPA ? "var(--warning)" : "var(--success)";
+              const roasColor = (Number(c.roas)||0) >= TARGET_ROAS ? "var(--success)" : (Number(c.roas)||0) >= 1.5 ? "var(--warning)" : "var(--danger)";
+              const freqColor = (Number(c.freq)||0) > 6 ? "var(--danger)" : (Number(c.freq)||0) > 4 ? "var(--warning)" : "var(--text-secondary)";
+              return (
+                <React.Fragment key={c.id}>
+                  <tr className="row-expandable" onClick={() => setExpandedRow(isExpanded ? null : c.id)}>
+                    <td><span className={`platform-dot ${c.platform}`} /></td>
+                    <td style={{ maxWidth: 240 }}>
+                      <span className="truncate" style={{ fontWeight: 500, display: "block" }}>{c.name}</span>
+                      <span className="mobile-row-sub" style={{ fontSize: 11, color: roasColor, fontFamily: "var(--font-mono)" }}>
+                        {(Number(c.roas)||0).toFixed(2)}× ROAS
+                      </span>
+                    </td>
+                    <td className="col-hide-mobile"><StatusBadge status={c.status} /></td>
+                    <td className="mono col-hide-mobile">${c.budget}</td>
+                    <td className="mono col-hide-mobile">{formatCurrency(c.spend7d)}</td>
+                    <td className="mono col-hide-mobile">{c.conv7d}</td>
+                    <td className="mono col-hide-mobile" style={{ color: cpaColor }}>${(Number(c.cpa)||0).toFixed(2)}</td>
+                    <td className="mono" style={{ color: roasColor }}>{(Number(c.roas)||0).toFixed(2)}×</td>
+                    <td className="mono col-hide-mobile">{((Number(c.ctr)||0) * 100).toFixed(2)}%</td>
+                    <td className="mono col-hide-mobile" style={{ color: freqColor }}>{(Number(c.freq)||0).toFixed(1)}</td>
+                    <td className="col-hide-mobile"><TrendArrow trend={c.trend} /></td>
+                    <td className="col-expand-indicator">
+                      <span style={{ color: "var(--text-tertiary)", fontSize: 12, display: "inline-block", transition: "transform 0.15s", transform: isExpanded ? "rotate(90deg)" : "none" }}>›</span>
+                    </td>
+                  </tr>
+                  {isExpanded && (
+                    <tr className="row-detail-row">
+                      <td colSpan={12} className="row-detail-cell">
+                        <div className="row-detail-panel">
+                          <div className="row-detail-item">
+                            <span className="row-detail-label">Status</span>
+                            <span className="row-detail-value" style={{ fontSize: 12 }}><StatusBadge status={c.status} /></span>
+                          </div>
+                          <div className="row-detail-item">
+                            <span className="row-detail-label">Budget/d</span>
+                            <span className="row-detail-value">${c.budget}</span>
+                          </div>
+                          <div className="row-detail-item">
+                            <span className="row-detail-label">7d Spend</span>
+                            <span className="row-detail-value">{formatCurrency(c.spend7d)}</span>
+                          </div>
+                          <div className="row-detail-item">
+                            <span className="row-detail-label">Conv</span>
+                            <span className="row-detail-value">{c.conv7d}</span>
+                          </div>
+                          <div className="row-detail-item">
+                            <span className="row-detail-label">CPA</span>
+                            <span className="row-detail-value" style={{ color: cpaColor }}>${(Number(c.cpa)||0).toFixed(2)}</span>
+                          </div>
+                          <div className="row-detail-item">
+                            <span className="row-detail-label">CTR</span>
+                            <span className="row-detail-value">{((Number(c.ctr)||0) * 100).toFixed(2)}%</span>
+                          </div>
+                          <div className="row-detail-item">
+                            <span className="row-detail-label">Freq</span>
+                            <span className="row-detail-value" style={{ color: freqColor }}>{(Number(c.freq)||0).toFixed(1)}</span>
+                          </div>
+                          <div className="row-detail-item">
+                            <span className="row-detail-label">Trend</span>
+                            <span className="row-detail-value"><TrendArrow trend={c.trend} /></span>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>

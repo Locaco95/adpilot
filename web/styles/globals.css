@@ -690,6 +690,76 @@ body {
 /* Compact table variant (5-col summary tables) */
 .data-table-compact { min-width: 360px; }
 
+/* ── Expandable table pattern (mobile row-detail) ─────────── */
+
+/* Column hidden on mobile, visible on desktop */
+.col-hide-mobile { /* visible by default */ }
+
+/* Column visible only on mobile (expand chevron) */
+.col-expand-indicator { display: none; }
+
+/* Supplementary text shown only on mobile (e.g. ROAS subtitle in name cell) */
+.mobile-row-sub { display: none; }
+
+/* Detail row hidden by default, shown on mobile when expanded */
+.row-detail-row { display: none; }
+
+@media (max-width: 640px) {
+  .col-hide-mobile       { display: none; }
+  .col-expand-indicator  { display: table-cell; width: 28px; text-align: center; }
+  .mobile-row-sub        { display: block; }
+  .row-detail-row        { display: table-row; }
+
+  /* Expandable tables: no horizontal scroll, no min-width */
+  .data-table-expandable { min-width: unset !important; width: 100%; }
+  .card:has(.data-table-expandable) {
+    overflow-x: visible !important;
+    -webkit-overflow-scrolling: unset !important;
+  }
+
+  /* Ensure grid-2 is always single-column at narrow widths */
+  .grid-2   { grid-template-columns: 1fr !important; }
+  .grid-2-1 { grid-template-columns: 1fr !important; }
+
+  /* Chart: larger y-axis labels and x-axis labels on mobile */
+  .area-chart-wrap text { font-size: 11px; }
+}
+
+/* Expandable row affordance */
+.row-expandable { cursor: pointer; }
+
+/* Row detail panel */
+.row-detail-cell {
+  padding: 0 !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+  background: var(--bg-surface) !important;
+}
+.row-detail-panel {
+  padding: 10px 12px 12px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px 10px;
+}
+.row-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.row-detail-label {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  font-family: var(--font-body);
+}
+.row-detail-value {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
 /* Stat strip — horizontal metric row that adapts to a grid on mobile */
 .stat-strip {
   display: flex;

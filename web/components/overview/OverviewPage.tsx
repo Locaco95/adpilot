@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useOverviewSummary, useOverviewDaily, useAnomalies } from "@/hooks/useOverview";
 import { useCampaigns } from "@/hooks/useCampaigns";
 import { useActions } from "@/hooks/useActions";
@@ -200,7 +200,7 @@ function AreaChart({ data, keys, colors, height = 160 }: {
   const hoveredX = tooltip != null ? pad.left + (tooltip.col / (data.length - 1)) * chartW : null;
 
   return (
-    <div style={{ position: "relative" }}>
+    <div className="area-chart-wrap" style={{ position: "relative" }}>
       <svg ref={svgRef} viewBox={`0 0 ${svgW} ${height}`}
         style={{ width: "100%", height, cursor: "crosshair" }}
         onMouseMove={handleMouseMove} onMouseLeave={() => setTooltip(null)}
@@ -419,6 +419,7 @@ function AnomalyRow({ anomaly }: { anomaly: Anomaly }) {
 export function OverviewPage() {
   const [selectedWindow, setSelectedWindow] = useState(7);
   const [showWindowMenu, setShowWindowMenu] = useState(false);
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
   // All hooks before any conditional returns
   const summaryQ   = useOverviewSummary(selectedWindow);
@@ -647,35 +648,62 @@ export function OverviewPage() {
             {topCampaigns.length} of {campaigns.length} · <a href="/campaigns" style={{ color: "var(--accent)", textDecoration: "none" }}>View all →</a>
           </span>
         </div>
-        <table className="data-table data-table-compact">
+        <table className="data-table data-table-compact data-table-expandable">
           <thead>
             <tr>
               <th style={{ width: 30 }} />
               <th>Campaign</th>
               <th>ROAS</th>
-              <th>CPA</th>
-              <th style={{ width: 60 }}>Trend</th>
+              <th className="col-hide-mobile">CPA</th>
+              <th className="col-hide-mobile" style={{ width: 60 }}>Trend</th>
+              <th className="col-expand-indicator" />
             </tr>
           </thead>
           <tbody>
-            {topCampaigns.map((c) => (
-              <tr key={c.id}>
-                <td><span className={`platform-dot ${c.platform}`} /></td>
-                <td style={{ maxWidth: 320 }}>
-                  <span className="truncate" style={{ fontWeight: 500, display: "block" }}>{c.name}</span>
-                  {c.status !== "active" && (
-                    <span style={{ fontSize: 10, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{c.status}</span>
+            {topCampaigns.map((c) => {
+              const isExpanded = expandedRow === c.id;
+              const roasColor = safeNum(c.roas) >= TARGET_ROAS ? "var(--success)" : safeNum(c.roas) >= 1.5 ? "var(--warning)" : "var(--danger)";
+              const cpaColor = safeNum(c.cpa) > TARGET_CPA ? "var(--danger)" : "var(--success)";
+              return (
+                <React.Fragment key={c.id}>
+                  <tr className="row-expandable" onClick={() => setExpandedRow(isExpanded ? null : c.id)}>
+                    <td><span className={`platform-dot ${c.platform}`} /></td>
+                    <td style={{ maxWidth: 280 }}>
+                      <span className="truncate" style={{ fontWeight: 500, display: "block" }}>{c.name}</span>
+                      {c.status !== "active" && (
+                        <span style={{ fontSize: 10, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{c.status}</span>
+                      )}
+                    </td>
+                    <td className="mono" style={{ color: roasColor }}>{safeNum(c.roas).toFixed(2)}×</td>
+                    <td className="mono col-hide-mobile" style={{ color: cpaColor }}>${safeNum(c.cpa).toFixed(2)}</td>
+                    <td className="col-hide-mobile"><TrendArrow trend={c.trend} /></td>
+                    <td className="col-expand-indicator">
+                      <span style={{ color: "var(--text-tertiary)", fontSize: 12, display: "inline-block", transition: "transform 0.15s", transform: isExpanded ? "rotate(90deg)" : "none" }}>›</span>
+                    </td>
+                  </tr>
+                  {isExpanded && (
+                    <tr className="row-detail-row">
+                      <td colSpan={10} className="row-detail-cell">
+                        <div className="row-detail-panel">
+                          <div className="row-detail-item">
+                            <span className="row-detail-label">CPA</span>
+                            <span className="row-detail-value" style={{ color: cpaColor }}>${safeNum(c.cpa).toFixed(2)}</span>
+                          </div>
+                          <div className="row-detail-item">
+                            <span className="row-detail-label">Trend</span>
+                            <span className="row-detail-value"><TrendArrow trend={c.trend} /></span>
+                          </div>
+                          <div className="row-detail-item">
+                            <span className="row-detail-label">Platform</span>
+                            <span className="row-detail-value" style={{ fontSize: 12, textTransform: "capitalize" }}>{c.platform}</span>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
                   )}
-                </td>
-                <td className="mono" style={{ color: safeNum(c.roas) >= TARGET_ROAS ? "var(--success)" : safeNum(c.roas) >= 1.5 ? "var(--warning)" : "var(--danger)" }}>
-                  {safeNum(c.roas).toFixed(2)}×
-                </td>
-                <td className="mono" style={{ color: safeNum(c.cpa) > TARGET_CPA ? "var(--danger)" : "var(--success)" }}>
-                  ${safeNum(c.cpa).toFixed(2)}
-                </td>
-                <td><TrendArrow trend={c.trend} /></td>
-              </tr>
-            ))}
+                </React.Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>
