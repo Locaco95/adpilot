@@ -9,7 +9,7 @@ import { SnapchatPanel } from "./SnapchatPanel";
 
 function MiniStat({ label, value, color }: { label: string; value: string | number; color: string }) {
   return (
-    <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-sm)", padding: "8px 14px", flex: 1, textAlign: "center" }}>
+    <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-sm)", padding: "10px 14px", flex: 1, textAlign: "center" }}>
       <div className="text-mono" style={{ fontSize: 18, fontWeight: 700, color, lineHeight: 1 }}>{value}</div>
       <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginTop: 3, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>{label}</div>
     </div>

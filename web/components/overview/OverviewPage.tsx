@@ -87,7 +87,10 @@ function KPICard({
       <div className={`kpi-delta ${deltaClass}`}>
         {arrow} {Math.abs(d).toFixed(1)}% vs prev 7d
       </div>
-      {sparkData && <Sparkline data={sparkData} color={accentColor ?? "var(--accent)"} />}
+      {sparkData
+        ? <Sparkline data={sparkData} color={accentColor ?? "var(--accent)"} />
+        : <div style={{ height: 34 }} />
+      }
     </div>
   );
 }
@@ -374,7 +377,7 @@ export function OverviewPage() {
       </div>
 
       {/* Charts row */}
-      <div className="grid-2-1 fade-in fade-in-1">
+      <div className="grid-2-1 fade-in fade-in-1" style={{ alignItems: "stretch" }}>
         <div className="card">
           <div className="card-header">
             <span className="card-title">Daily Spend by Platform</span>
@@ -386,17 +389,19 @@ export function OverviewPage() {
               labels={["Snapchat", "TikTok", "Meta"]} height={170} />
           )}
         </div>
-        <div className="card">
+        <div className="card" style={{ display: "flex", flexDirection: "column" }}>
           <div className="card-header">
             <span className="card-title">Spend Distribution</span>
           </div>
-          <DonutChart segments={platformSpendData} centerLabel={`${selectedWindow}d total`}
-            centerValue={formatCurrency(summary.spend)} size={110} />
+          <div style={{ flex: 1, display: "flex", alignItems: "center" }}>
+            <DonutChart segments={platformSpendData} centerLabel={`${selectedWindow}d total`}
+              centerValue={formatCurrency(summary.spend)} size={130} />
+          </div>
         </div>
       </div>
 
       {/* Anomalies + Platform ROAS */}
-      <div className="grid-2 fade-in fade-in-2">
+      <div className="grid-2 fade-in fade-in-2" style={{ alignItems: "stretch" }}>
         <div className="card">
           <div className="card-header">
             <span className="card-title">Active Anomalies</span>
@@ -412,13 +417,15 @@ export function OverviewPage() {
             )}
           </div>
         </div>
-        <div className="card">
-          <div className="card-header">
-            <span className="card-title">Platform ROAS</span>
-            <span className="text-xs text-tertiary">7-day</span>
+        <div className="card" style={{ display: "flex", flexDirection: "column" }}>
+          <div>
+            <div className="card-header">
+              <span className="card-title">Platform ROAS</span>
+              <span className="text-xs text-tertiary">7-day</span>
+            </div>
+            <HBar items={platformRoas} maxValue={4} />
           </div>
-          <HBar items={platformRoas} maxValue={4} />
-          <div style={{ marginTop: 12, padding: "8px 0", borderTop: "1px solid var(--border-subtle)" }}>
+          <div style={{ marginTop: "auto", paddingTop: 12, borderTop: "1px solid var(--border-subtle)" }}>
             <div className="flex items-center justify-between">
               <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>Target ROAS</span>
               <span className="text-mono" style={{ fontSize: 12, color: "var(--accent)" }}>{TARGET_ROAS.toFixed(1)}×</span>
