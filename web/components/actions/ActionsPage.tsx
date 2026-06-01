@@ -113,7 +113,6 @@ function ActionCard({ action }: { action: Action }) {
             onClick={() => decideMut.mutate({ id: action.id, payload: { decision: "rejected" } })}>
             ✗ Reject
           </button>
-          <button className="btn btn-ghost btn-sm">⏸ Defer 6h</button>
         </div>
       )}
 
@@ -157,9 +156,9 @@ export function ActionsPage() {
 
       {/* Summary strip */}
       <div className="flex gap-12 mb-16 fade-in" style={{ gap: 12, marginBottom: 12 }}>
-        <ActionSummaryCard label="Tier 3 — Awaiting" count={all.filter((a) => a.tier === 3 && !a.status).length} color="var(--danger)" icon="⬤" />
-        <ActionSummaryCard label="Tier 2 — Auto-executed" count={all.filter((a) => a.tier === 2).length} color="var(--warning)" icon="◐" />
-        <ActionSummaryCard label="Tier 1 — Autonomous" count={4} color="var(--success)" icon="●" />
+        <ActionSummaryCard label="Tier 3 — Pending" count={all.filter((a) => a.tier === 3 && a.status === "pending").length} color="var(--danger)" icon="⬤" />
+        <ActionSummaryCard label="Tier 2 — Auto-executed" count={all.filter((a) => a.tier === 2 && a.status != null && ["auto_approved", "approved"].includes(a.status)).length} color="var(--warning)" icon="◐" />
+        <ActionSummaryCard label="Tier 1 — Autonomous" count={all.filter((a) => a.tier === 1).length} color="var(--success)" icon="●" />
       </div>
 
       {/* Filter tabs */}

@@ -29,10 +29,10 @@
   /* Platform colors */
   --meta: #1877F2;
   --tiktok: #00D4AA;
-  --snapchat: #FFFC00;
+  --snapchat: #D4C000;
   --meta-bg: oklch(0.20 0.04 260);
   --tiktok-bg: oklch(0.20 0.04 170);
-  --snapchat-bg: oklch(0.22 0.04 95);
+  --snapchat-bg: oklch(0.22 0.04 88);
 
   /* Semantic */
   --success: oklch(0.72 0.16 155);
@@ -57,6 +57,13 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* Accessible focus indicator — applies to keyboard navigation only */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
 
 html, body {
   height: 100%;
@@ -345,17 +352,17 @@ body {
 }
 
 .kpi-label {
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-tertiary);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   margin-bottom: 6px;
 }
 
 .kpi-value {
   font-family: var(--font-mono);
-  font-size: 24px;
+  font-size: 32px;
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.1;
@@ -763,7 +770,7 @@ body {
   .page-title { font-size: 20px; }
   .kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 14px; }
   .kpi-card { padding: 12px; }
-  .kpi-value { font-size: 19px; }
+  .kpi-value { font-size: 24px; }
   .kpi-delta { font-size: 11px; }
   .grid-2 { grid-template-columns: 1fr; gap: 10px; margin-bottom: 12px; }
   .grid-2-1 { grid-template-columns: 1fr; gap: 10px; margin-bottom: 12px; }

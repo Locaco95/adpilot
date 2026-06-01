@@ -108,7 +108,14 @@ export function CreativePage() {
 
       {/* Creative cards */}
       <div className="grid-2 fade-in fade-in-1" style={{ marginBottom: 0 }}>
-        {all.map((draft) => <CreativeCard key={draft.id} draft={draft} />)}
+        {all.map((draft, idx) => {
+          const isOrphan = all.length % 2 !== 0 && idx === all.length - 1;
+          return (
+            <div key={draft.id} style={isOrphan ? { gridColumn: "span 2", maxWidth: "calc(50% - 7px)" } : {}}>
+              <CreativeCard draft={draft} />
+            </div>
+          );
+        })}
         {all.length === 0 && (
           <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "40px 0", color: "var(--text-tertiary)", fontSize: 13 }}>
             No drafts found
