@@ -653,10 +653,10 @@ export function OverviewPage() {
             <tr>
               <th style={{ width: 30 }} />
               <th>Campaign</th>
-              <th>ROAS</th>
-              <th className="col-hide-mobile">CPA</th>
-              <th className="col-hide-mobile" style={{ width: 60 }}>Trend</th>
-              <th className="col-expand-indicator" />
+              <th style={{ width: 64 }}>ROAS</th>
+              <th className="col-hide-mobile" style={{ width: 72 }}>CPA</th>
+              <th className="col-hide-mobile" style={{ width: 56 }}>Trend</th>
+              <th className="col-expand-indicator" style={{ width: 28 }} />
             </tr>
           </thead>
           <tbody>

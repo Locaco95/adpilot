@@ -710,11 +710,24 @@ body {
   .mobile-row-sub        { display: block; }
   .row-detail-row        { display: table-row; }
 
-  /* Expandable tables: no horizontal scroll, no min-width */
-  .data-table-expandable { min-width: unset !important; width: 100%; }
+  /* Expandable tables: no horizontal scroll, fixed layout for reliable column widths */
+  .data-table-expandable {
+    min-width: unset !important;
+    width: 100%;
+    table-layout: fixed;
+  }
   .card:has(.data-table-expandable) {
     overflow-x: visible !important;
     -webkit-overflow-scrolling: unset !important;
+  }
+  /* Top-align all cells so ROAS doesn't float mid-row when name wraps */
+  .data-table-expandable td {
+    vertical-align: top;
+    padding-top: 11px;
+  }
+  /* Detail cell should not have top padding */
+  .row-detail-cell {
+    padding-top: 0 !important;
   }
 
   /* Ensure grid-2 is always single-column at narrow widths */

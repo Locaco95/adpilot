@@ -96,16 +96,16 @@ export function CampaignsPage() {
             <tr>
               <th style={{ width: 30 }} />
               <th>Campaign</th>
-              <th className="col-hide-mobile">Status</th>
-              <th className="col-hide-mobile" onClick={() => handleSort("budget")} style={{ cursor: "pointer", userSelect: "none" }}>Budget/d {sortBy === "budget" ? (sortDir === "desc" ? "↓" : "↑") : ""}</th>
-              <th className="col-hide-mobile" onClick={() => handleSort("spend7d")} style={{ cursor: "pointer", userSelect: "none" }}>7d Spend {sortBy === "spend7d" ? (sortDir === "desc" ? "↓" : "↑") : ""}</th>
-              <th className="col-hide-mobile" onClick={() => handleSort("conv7d")} style={{ cursor: "pointer", userSelect: "none" }}>Conv {sortBy === "conv7d" ? (sortDir === "desc" ? "↓" : "↑") : ""}</th>
-              <th className="col-hide-mobile" onClick={() => handleSort("cpa")} style={{ cursor: "pointer", userSelect: "none" }}>CPA {sortBy === "cpa" ? (sortDir === "desc" ? "↓" : "↑") : ""}</th>
-              <th onClick={() => handleSort("roas")} style={{ cursor: "pointer", userSelect: "none" }}>ROAS {sortBy === "roas" ? (sortDir === "desc" ? "↓" : "↑") : ""}</th>
-              <th className="col-hide-mobile">CTR</th>
-              <th className="col-hide-mobile">Freq</th>
-              <th className="col-hide-mobile">Trend</th>
-              <th className="col-expand-indicator" />
+              <th className="col-hide-mobile" style={{ width: 80 }}>Status</th>
+              <th className="col-hide-mobile" style={{ width: 76, cursor: "pointer", userSelect: "none" }} onClick={() => handleSort("budget")}>Budget/d {sortBy === "budget" ? (sortDir === "desc" ? "↓" : "↑") : ""}</th>
+              <th className="col-hide-mobile" style={{ width: 76, cursor: "pointer", userSelect: "none" }} onClick={() => handleSort("spend7d")}>7d Spend {sortBy === "spend7d" ? (sortDir === "desc" ? "↓" : "↑") : ""}</th>
+              <th className="col-hide-mobile" style={{ width: 52, cursor: "pointer", userSelect: "none" }} onClick={() => handleSort("conv7d")}>Conv {sortBy === "conv7d" ? (sortDir === "desc" ? "↓" : "↑") : ""}</th>
+              <th className="col-hide-mobile" style={{ width: 68, cursor: "pointer", userSelect: "none" }} onClick={() => handleSort("cpa")}>CPA {sortBy === "cpa" ? (sortDir === "desc" ? "↓" : "↑") : ""}</th>
+              <th style={{ width: 68, cursor: "pointer", userSelect: "none" }} onClick={() => handleSort("roas")}>ROAS {sortBy === "roas" ? (sortDir === "desc" ? "↓" : "↑") : ""}</th>
+              <th className="col-hide-mobile" style={{ width: 52 }}>CTR</th>
+              <th className="col-hide-mobile" style={{ width: 48 }}>Freq</th>
+              <th className="col-hide-mobile" style={{ width: 52 }}>Trend</th>
+              <th className="col-expand-indicator" style={{ width: 28 }} />
             </tr>
           </thead>
           <tbody>
