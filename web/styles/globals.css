@@ -687,6 +687,50 @@ body {
 }
 .table-responsive .data-table { min-width: 560px; }
 
+/* Compact table variant (5-col summary tables) */
+.data-table-compact { min-width: 360px; }
+
+/* DonutChart responsive layout */
+.donut-layout {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.donut-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Insights attention strip */
+.insights-strip {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.insight-chip {
+  white-space: nowrap;
+}
+
+/* ── Mobile responsive overrides ─────────────────────────── */
+@media (max-width: 480px) {
+  /* Donut stacks vertically on very narrow screens */
+  .donut-layout {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  /* Insight chips allow text to wrap */
+  .insight-chip {
+    white-space: normal;
+    font-size: 11px !important;
+  }
+}
+
 @media (min-width: 1600px) {
   .kpi-grid { grid-template-columns: repeat(5, 1fr); }
   .main-content { padding: 24px 40px 0; }
@@ -708,10 +752,14 @@ body {
   .sidebar-badge { position: absolute; top: 3px; right: 3px; padding: 1px 3px; font-size: 9px; }
   .sidebar-footer { display: none; }
   .kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  /* Orphan KPI card (odd count): span both columns, capped at half width */
+  .kpi-grid .kpi-card:last-child:nth-child(odd) { grid-column: 1 / -1; max-width: calc(50% - 5px); }
   .grid-2-1 { grid-template-columns: 1fr; }
   .grid-3 { grid-template-columns: 1fr 1fr; }
   .page-title { font-size: 20px; }
   .page-header { margin-bottom: 16px; }
+  /* Ensure all data tables scroll horizontally at this breakpoint */
+  .card:has(.data-table) { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 }
 
 @media (max-width: 767px) {

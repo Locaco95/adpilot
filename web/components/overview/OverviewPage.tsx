@@ -74,14 +74,14 @@ function InsightChip({ type, text }: { type: InsightType; text: string }) {
   };
   const { bg, color, icon } = p[type];
   return (
-    <div style={{
+    <div className="insight-chip" style={{
       background: bg, color,
       border: `1px solid ${color}35`,
       borderRadius: "var(--radius-sm)",
       padding: "5px 10px",
       fontSize: 12, fontWeight: 500,
       display: "inline-flex", alignItems: "center", gap: 5,
-      flexShrink: 0, whiteSpace: "nowrap",
+      flexShrink: 0,
     }}>
       <span style={{ fontSize: 9, lineHeight: 1 }}>{icon}</span>
       {text}
@@ -161,6 +161,7 @@ function AreaChart({ data, keys, colors, height = 160 }: {
 }) {
   const [tooltip, setTooltip] = useState<TooltipState>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const touchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const svgW = 500;
   const pad = { top: 8, right: 8, bottom: 24, left: 48 };
@@ -171,15 +172,29 @@ function AreaChart({ data, keys, colors, height = 160 }: {
   const yTicks = [0, maxVal * 0.25, maxVal * 0.5, maxVal * 0.75, maxVal];
   const keyLabels: Record<string, string> = { meta: "Meta", tiktok: "TikTok", snapchat: "Snapchat" };
 
-  function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+  function getColFromClientX(clientX: number): TooltipState {
     const svg = svgRef.current;
-    if (!svg || data.length < 2) return;
+    if (!svg || data.length < 2) return null;
     const rect = svg.getBoundingClientRect();
-    const relX = (e.clientX - rect.left) / rect.width;
+    const relX = (clientX - rect.left) / rect.width;
     const chartX = relX * svgW - pad.left;
-    if (chartX < 0 || chartX > chartW) { setTooltip(null); return; }
+    if (chartX < 0 || chartX > chartW) return null;
     const col = Math.max(0, Math.min(data.length - 1, Math.round((chartX / chartW) * (data.length - 1))));
-    setTooltip({ col, pct: relX });
+    return { col, pct: relX };
+  }
+
+  function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+    setTooltip(getColFromClientX(e.clientX));
+  }
+
+  function handleTouchStart(e: React.TouchEvent<SVGSVGElement>) {
+    clearTimeout(touchTimer.current);
+    const touch = e.touches[0];
+    if (touch) setTooltip(getColFromClientX(touch.clientX));
+  }
+
+  function handleTouchEnd() {
+    touchTimer.current = setTimeout(() => setTooltip(null), 1800);
   }
 
   const hoveredX = tooltip != null ? pad.left + (tooltip.col / (data.length - 1)) * chartW : null;
@@ -188,7 +203,8 @@ function AreaChart({ data, keys, colors, height = 160 }: {
     <div style={{ position: "relative" }}>
       <svg ref={svgRef} viewBox={`0 0 ${svgW} ${height}`}
         style={{ width: "100%", height, cursor: "crosshair" }}
-        onMouseMove={handleMouseMove} onMouseLeave={() => setTooltip(null)}>
+        onMouseMove={handleMouseMove} onMouseLeave={() => setTooltip(null)}
+        onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
 
         {/* Grid lines */}
         {yTicks.map((t, i) => {
@@ -257,9 +273,7 @@ function AreaChart({ data, keys, colors, height = 160 }: {
       {tooltip != null && (
         <div style={{
           position: "absolute", top: 4, zIndex: 10, pointerEvents: "none",
-          left: tooltip.pct > 0.65
-            ? `calc(${tooltip.pct * 100}% - 148px)`
-            : `calc(${tooltip.pct * 100}% + 12px)`,
+          left: `clamp(4px, calc(${tooltip.pct * 100}% - 70px), calc(100% - 148px))`,
           background: "var(--bg-elevated)",
           border: "1px solid var(--border-default)",
           borderRadius: "var(--radius-sm)",
@@ -309,7 +323,7 @@ function DonutChart({ segments, size = 100, thickness = 14, centerLabel, centerV
   const displayColor = active ? active.color : "var(--text-primary)";
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+    <div className="donut-layout">
       <svg width={size} height={size} style={{ flexShrink: 0, cursor: "default" }}>
         {segments.map((seg, i) => {
           const pct = seg.value / total;
@@ -329,17 +343,19 @@ function DonutChart({ segments, size = 100, thickness = 14, centerLabel, centerV
               }}
               onMouseEnter={() => setHovered(i)}
               onMouseLeave={() => setHovered(null)}
+              onTouchStart={(e) => { e.stopPropagation(); setHovered(hovered === i ? null : i); }}
             />
           );
         })}
         <text x={c} y={c - 5} textAnchor="middle" fill="var(--text-tertiary)" fontSize="9" fontFamily="var(--font-body)">{displayLabel}</text>
         <text x={c} y={c + 10} textAnchor="middle" fill={displayColor} fontSize="14" fontWeight="700" fontFamily="var(--font-mono)">{displayValue}</text>
       </svg>
-      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+      <div className="donut-legend">
         {segments.map((seg, i) => (
           <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer",
             opacity: hovered !== null && hovered !== i ? 0.4 : 1, transition: "opacity 0.15s" }}
-            onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)}>
+            onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)}
+            onTouchStart={(e) => { e.stopPropagation(); setHovered(hovered === i ? null : i); }}>
             <span className="platform-dot" style={{ background: seg.color }} />
             <span style={{ fontSize: 12 }}>{seg.label}</span>
             <span className="text-mono" style={{ fontSize: 12, color: "var(--text-secondary)", marginLeft: "auto" }}>
@@ -542,7 +558,7 @@ export function OverviewPage() {
 
       {/* Phase 3 — Needs Attention / Insights strip */}
       {insights.length > 0 && (
-        <div className="fade-in" style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
+        <div className="insights-strip fade-in">
           <span style={{ fontSize: 10, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600, marginRight: 2, whiteSpace: "nowrap" }}>
             Needs attention
           </span>
@@ -631,7 +647,7 @@ export function OverviewPage() {
             {topCampaigns.length} of {campaigns.length} · <a href="/campaigns" style={{ color: "var(--accent)", textDecoration: "none" }}>View all →</a>
           </span>
         </div>
-        <table className="data-table">
+        <table className="data-table data-table-compact">
           <thead>
             <tr>
               <th style={{ width: 30 }} />
