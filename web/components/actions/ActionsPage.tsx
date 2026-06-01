@@ -155,7 +155,7 @@ export function ActionsPage() {
       </div>
 
       {/* Summary strip */}
-      <div className="flex gap-12 mb-16 fade-in" style={{ gap: 12, marginBottom: 12 }}>
+      <div className="stat-strip fade-in" style={{ marginBottom: 12 }}>
         <ActionSummaryCard label="Tier 3 — Pending" count={all.filter((a) => a.tier === 3 && a.status === "pending").length} color="var(--danger)" icon="⬤" />
         <ActionSummaryCard label="Tier 2 — Auto-executed" count={all.filter((a) => a.tier === 2 && a.status != null && ["auto_approved", "approved"].includes(a.status)).length} color="var(--warning)" icon="◐" />
         <ActionSummaryCard label="Tier 1 — Autonomous" count={all.filter((a) => a.tier === 1).length} color="var(--success)" icon="●" />

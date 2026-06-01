@@ -76,7 +76,7 @@ export function CampaignsPage() {
       ) : (
       <>
       {/* Summary bar */}
-      <div className="flex gap-12 mb-16 fade-in fade-in-1" style={{ gap: 12, marginBottom: 16 }}>
+      <div className="stat-strip fade-in fade-in-1" style={{ marginBottom: 16 }}>
         <MiniStat label="Active"  value={filtered.filter((c) => c.status === "active").length}  color="var(--success)" />
         <MiniStat label="Warning" value={filtered.filter((c) => c.status === "warning").length} color="var(--warning)" />
         <MiniStat label="Paused"  value={filtered.filter((c) => c.status === "paused").length}  color="var(--text-tertiary)" />
@@ -133,7 +133,7 @@ export function CampaignsPage() {
       </div>
 
       {/* Threshold reference */}
-      <div className="flex gap-12 fade-in fade-in-3" style={{ gap: 12, marginTop: 16, marginBottom: 24 }}>
+      <div className="stat-strip stat-strip-4 fade-in fade-in-3" style={{ marginTop: 16, marginBottom: 24 }}>
         {[
           { label: "Target CPA",  value: `$${TARGET_CPA}`,                             color: "var(--accent)" },
           { label: "Target ROAS", value: `${TARGET_ROAS}×`,                            color: "var(--accent)" },

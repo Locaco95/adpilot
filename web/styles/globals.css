@@ -690,6 +690,23 @@ body {
 /* Compact table variant (5-col summary tables) */
 .data-table-compact { min-width: 360px; }
 
+/* Stat strip — horizontal metric row that adapts to a grid on mobile */
+.stat-strip {
+  display: flex;
+  gap: 12px;
+}
+@media (max-width: 640px) {
+  .stat-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  /* 4-item threshold strip: 2-column grid is cleaner than 3+1 */
+  .stat-strip.stat-strip-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 /* DonutChart responsive layout */
 .donut-layout {
   display: flex;
