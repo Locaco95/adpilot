@@ -107,11 +107,10 @@ export function CreativePage() {
       </div>
 
       {/* Creative cards */}
-      <div className="grid-2 fade-in fade-in-1" style={{ marginBottom: 0 }}>
-        {all.map((draft, idx) => {
-          const isOrphan = all.length % 2 !== 0 && idx === all.length - 1;
+      <div className="grid-creative fade-in fade-in-1" style={{ marginBottom: 0 }}>
+        {all.map((draft) => {
           return (
-            <div key={draft.id} style={isOrphan ? { gridColumn: "span 2", maxWidth: "calc(50% - 7px)" } : {}}>
+            <div key={draft.id}>
               <CreativeCard draft={draft} />
             </div>
           );

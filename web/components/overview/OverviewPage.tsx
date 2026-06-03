@@ -652,10 +652,10 @@ export function OverviewPage() {
           <thead>
             <tr>
               <th style={{ width: 30 }} />
-              <th>Campaign</th>
+              <th className="col-name">Campaign</th>
               <th style={{ width: 64 }}>ROAS</th>
-              <th className="col-hide-mobile" style={{ width: 72 }}>CPA</th>
-              <th className="col-hide-mobile" style={{ width: 56 }}>Trend</th>
+              <th className="col-hide-mobile">CPA</th>
+              <th className="col-hide-mobile">Trend</th>
               <th className="col-expand-indicator" style={{ width: 28 }} />
             </tr>
           </thead>
@@ -668,7 +668,7 @@ export function OverviewPage() {
                 <React.Fragment key={c.id}>
                   <tr className="row-expandable" onClick={() => setExpandedRow(isExpanded ? null : c.id)}>
                     <td><span className={`platform-dot ${c.platform}`} /></td>
-                    <td style={{ maxWidth: 280 }}>
+                    <td className="col-name">
                       <span className="truncate" style={{ fontWeight: 500, display: "block" }}>{c.name}</span>
                       {c.status !== "active" && (
                         <span style={{ fontSize: 10, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{c.status}</span>

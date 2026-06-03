@@ -710,11 +710,19 @@ body {
   .mobile-row-sub        { display: block; }
   .row-detail-row        { display: table-row; }
 
-  /* Expandable tables: no horizontal scroll, fixed layout for reliable column widths */
+  /* Expandable tables: no horizontal scroll */
   .data-table-expandable {
     min-width: unset !important;
     width: 100%;
-    table-layout: fixed;
+  }
+  /* Name cell + header: fills remaining width and truncates — the max-width:0 + width:100% trick.
+     Applied to BOTH th and td so the header text clips instead of overflowing onto neighbors. */
+  .data-table-expandable .col-name {
+    overflow: hidden;
+    max-width: 0;
+    width: 100%;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
   .card:has(.data-table-expandable) {
     overflow-x: visible !important;
@@ -802,6 +810,17 @@ body {
   gap: 7px;
   flex: 1;
   min-width: 0;
+}
+
+/* Creative card gallery — breakpoint-independent.
+   auto-fill + minmax collapses to 1 col below ~280px and goes 2-col above,
+   with no media query and no orphan-card hack. Last odd card sizes naturally. */
+.grid-creative {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+  align-items: start;
 }
 
 /* Insights attention strip */

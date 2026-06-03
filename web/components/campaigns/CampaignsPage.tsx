@@ -95,7 +95,7 @@ export function CampaignsPage() {
           <thead>
             <tr>
               <th style={{ width: 30 }} />
-              <th>Campaign</th>
+              <th className="col-name">Campaign</th>
               <th className="col-hide-mobile" style={{ width: 80 }}>Status</th>
               <th className="col-hide-mobile" style={{ width: 76, cursor: "pointer", userSelect: "none" }} onClick={() => handleSort("budget")}>Budget/d {sortBy === "budget" ? (sortDir === "desc" ? "↓" : "↑") : ""}</th>
               <th className="col-hide-mobile" style={{ width: 76, cursor: "pointer", userSelect: "none" }} onClick={() => handleSort("spend7d")}>7d Spend {sortBy === "spend7d" ? (sortDir === "desc" ? "↓" : "↑") : ""}</th>
