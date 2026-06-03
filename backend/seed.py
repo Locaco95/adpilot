@@ -18,7 +18,10 @@ from app.models import (
 )
 
 random.seed(42)
-TODAY = date(2026, 5, 25)  # matches frontend mock-data anchor
+# Anchor to the real current date so seeded metrics always stay inside the
+# dashboard's rolling windows (7/14/30d). A fixed date goes stale: once the
+# real date passes it, the "last 7 days" query returns zeros.
+TODAY = date.today()
 
 
 PLATFORMS_SEED = [
