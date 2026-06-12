@@ -5,7 +5,7 @@ import yaml
 
 from app.settings import get_settings
 from app.database import engine, Base
-from app.api import auth, overview, campaigns, actions, anomalies, creative, audit, system, snap
+from app.api import auth, overview, campaigns, actions, anomalies, creative, audit, system, snap, snap_create
 
 settings = get_settings()
 
@@ -55,6 +55,7 @@ app.include_router(creative.router,  prefix=PREFIX)
 app.include_router(audit.router,     prefix=PREFIX)
 app.include_router(system.router,    prefix=PREFIX)
 app.include_router(snap.router,      prefix=PREFIX)
+app.include_router(snap_create.router, prefix=PREFIX)
 
 
 @app.get("/health")

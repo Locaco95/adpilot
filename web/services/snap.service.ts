@@ -1,5 +1,5 @@
 /* ── AdPilot — Snap Marketing API service ──────────────────────── */
-import { apiGet } from "./api-client";
+import { apiGet, apiPost } from "./api-client";
 import type {
   SnapStatus,
   SnapMeResponse,
@@ -8,6 +8,8 @@ import type {
   SnapAdSquadsResponse,
   SnapAdsResponse,
   SnapCampaignStatsResponse,
+  CreateCampaignRequest,
+  CreateCampaignResult,
 } from "@/types/snap";
 
 export function getSnapStatus(): Promise<SnapStatus> {
@@ -54,4 +56,10 @@ export function getSnapCampaignStats(
   return apiGet<SnapCampaignStatsResponse>(
     `/snap/campaigns/${campaignId}/stats?granularity=${granularity}&fields=${fields}`
   );
+}
+
+export function createSnapCampaign(
+  payload: CreateCampaignRequest
+): Promise<CreateCampaignResult> {
+  return apiPost<CreateCampaignResult>("/snap/campaigns/create", payload);
 }

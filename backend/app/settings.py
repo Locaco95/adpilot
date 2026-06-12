@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     snapchat_client_secret: str = ""
     snapchat_refresh_token: str = ""
     snapchat_redirect_uri: str = ""
+    snapchat_org_id_loay: str = ""            # org that owns the public profile + ad account
+    snapchat_profile_id: str = ""             # optional override; else discovered from the org
 
     # Shopify
     shopify_shop_url: str = ""
