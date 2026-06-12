@@ -125,6 +125,27 @@ class SnapClient:
         r.raise_for_status()
         return r.json()
 
+    async def put(self, path: str, json: dict | None = None) -> dict[str, Any]:
+        token = await self._ensure_access_token()
+        url = path if path.startswith("http") else f"{API_BASE}{path}"
+        async with httpx.AsyncClient(timeout=30) as h:
+            r = await h.put(
+                url,
+                json=json,
+                headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+            )
+        if r.status_code == 401:
+            await self._refresh()
+            token = self._access_token
+            async with httpx.AsyncClient(timeout=30) as h:
+                r = await h.put(
+                    url,
+                    json=json,
+                    headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+                )
+        r.raise_for_status()
+        return r.json()
+
     async def post_multipart(self, path: str, files: dict) -> dict[str, Any]:
         """Upload a file. `files` is httpx's multipart dict, e.g.
         {"file": (filename, bytes, content_type)}."""

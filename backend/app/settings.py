@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     # Telegram
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
+    telegram_webhook_secret: str = ""
+
+    # LLM (OpenRouter)
+    openrouter_api_key: str = ""
+    llm_model: str = "openai/gpt-4o-mini"
 
     # App
     environment: str = "development"
