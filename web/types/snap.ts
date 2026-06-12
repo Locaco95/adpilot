@@ -116,3 +116,34 @@ export interface SnapCampaignStatsResponse {
   total_stats?: { total_stat: SnapCampaignStat }[];
   timeseries_stats?: { timeseries_stat: SnapCampaignStat }[];
 }
+
+/* ── Campaign creation (write path) ─────────────────────────── */
+export type SnapObjective =
+  | "AWARENESS_AND_ENGAGEMENT"
+  | "SALES"
+  | "TRAFFIC"
+  | "APP_PROMOTION"
+  | "LEADS";
+
+export type SnapMediaType = "VIDEO" | "IMAGE";
+
+export interface CreateCampaignRequest {
+  name: string;
+  objective: SnapObjective;
+  country_code: string;     // ISO-2, e.g. "sa"
+  daily_budget: number;     // in the ad account's currency
+  destination_url: string;
+  headline: string;         // max 34 chars
+  drive_url: string;        // public Google Drive share link
+  media_type: SnapMediaType;
+}
+
+export interface CreateCampaignResult {
+  campaign_id: string;
+  ad_squad_id: string;
+  creative_id: string;
+  ad_id: string;
+  media_id: string;
+  media_status: string;
+  status: string;           // "PAUSED"
+}

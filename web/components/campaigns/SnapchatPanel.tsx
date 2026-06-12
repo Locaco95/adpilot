@@ -1,5 +1,6 @@
 "use client";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useSnapStatus,
   useSnapMe,
@@ -7,8 +8,35 @@ import {
   useSnapCampaigns,
   useSnapAdSquads,
   useSnapAds,
+  snapKeys,
 } from "@/hooks/useSnap";
-import type { SnapAdAccount, SnapCampaign } from "@/types/snap";
+import { createSnapCampaign } from "@/services/snap.service";
+import type {
+  SnapAdAccount,
+  SnapCampaign,
+  SnapObjective,
+  SnapMediaType,
+  CreateCampaignResult,
+} from "@/types/snap";
+
+/* Targetable markets — Snap accepts any country; this is just the shortlist. */
+const REGIONS: { code: string; label: string }[] = [
+  { code: "sa", label: "Saudi Arabia" },
+  { code: "ae", label: "United Arab Emirates" },
+  { code: "eg", label: "Egypt" },
+  { code: "kw", label: "Kuwait" },
+  { code: "qa", label: "Qatar" },
+  { code: "bh", label: "Bahrain" },
+  { code: "om", label: "Oman" },
+];
+
+const OBJECTIVES: { value: SnapObjective; label: string }[] = [
+  { value: "TRAFFIC", label: "Traffic (swipe-ups)" },
+  { value: "AWARENESS_AND_ENGAGEMENT", label: "Awareness & engagement" },
+  { value: "SALES", label: "Sales (pixel purchase)" },
+  { value: "LEADS", label: "Leads" },
+  { value: "APP_PROMOTION", label: "App promotion" },
+];
 
 /* Snap reports money in micros (1 USD = 1,000,000). */
 function microsToCurrency(m: number | undefined, currency = "USD"): string {
@@ -56,21 +84,35 @@ function StatusPill({ status }: { status: string }) {
 function SectionCard({
   title,
   subtitle,
+  action,
   children,
 }: {
   title: string;
   subtitle?: string;
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <div className="card fade-in" style={{ marginBottom: 16 }}>
-      <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border-subtle)" }}>
-        <div style={{ fontWeight: 600, fontSize: 14 }}>{title}</div>
-        {subtitle && (
-          <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 2 }}>
-            {subtitle}
-          </div>
-        )}
+      <div
+        style={{
+          padding: "14px 16px",
+          borderBottom: "1px solid var(--border-subtle)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+        }}
+      >
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 14 }}>{title}</div>
+          {subtitle && (
+            <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 2 }}>
+              {subtitle}
+            </div>
+          )}
+        </div>
+        {action}
       </div>
       <div style={{ padding: "12px 16px" }}>{children}</div>
     </div>
@@ -91,6 +133,212 @@ function EmptyHint({ text }: { text: string }) {
     </div>
   );
 }
+
+/* ── Create Campaign form ───────────────────────────────────── */
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  background: "var(--bg-input)",
+  border: "1px solid var(--border-subtle)",
+  borderRadius: "var(--radius-sm)",
+  padding: "8px 10px",
+  color: "var(--text-primary)",
+  fontSize: 13,
+  fontFamily: "var(--font-body)",
+  outline: "none",
+};
+
+const labelStyle: React.CSSProperties = {
+  fontSize: 11,
+  color: "var(--text-tertiary)",
+  textTransform: "uppercase",
+  letterSpacing: "0.05em",
+  marginBottom: 4,
+  display: "block",
+};
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label style={{ display: "block" }}>
+      <span style={labelStyle}>{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function CreateCampaignForm({
+  adAccountId,
+  currency,
+  onClose,
+}: {
+  adAccountId: string;
+  currency: string;
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const [name, setName] = useState("");
+  const [objective, setObjective] = useState<SnapObjective>("TRAFFIC");
+  const [countryCode, setCountryCode] = useState("sa");
+  const [dailyBudget, setDailyBudget] = useState("20");
+  const [destinationUrl, setDestinationUrl] = useState("");
+  const [headline, setHeadline] = useState("");
+  const [driveUrl, setDriveUrl] = useState("");
+  const [mediaType, setMediaType] = useState<SnapMediaType>("VIDEO");
+
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<CreateCampaignResult | null>(null);
+
+  const budgetNum = Number(dailyBudget);
+  const canSubmit =
+    name.trim() &&
+    headline.trim() &&
+    headline.length <= 34 &&
+    destinationUrl.trim() &&
+    driveUrl.trim() &&
+    budgetNum >= 20 &&
+    !submitting;
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      const res = await createSnapCampaign({
+        name: name.trim(),
+        objective,
+        country_code: countryCode,
+        daily_budget: budgetNum,
+        destination_url: destinationUrl.trim(),
+        headline: headline.trim(),
+        drive_url: driveUrl.trim(),
+        media_type: mediaType,
+      });
+      setResult(res);
+      qc.invalidateQueries({ queryKey: snapKeys.campaigns(adAccountId) });
+      qc.invalidateQueries({ queryKey: snapKeys.adsquads(adAccountId) });
+      qc.invalidateQueries({ queryKey: snapKeys.ads(adAccountId) });
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (result) {
+    return (
+      <div style={{ fontSize: 13 }}>
+        <div style={{ color: "var(--success)", fontWeight: 600, marginBottom: 8 }}>
+          ✓ Campaign created (PAUSED — it will not spend until you set it ACTIVE)
+        </div>
+        <div style={{ display: "grid", gap: 4, fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--text-secondary)" }}>
+          <div>campaign: {result.campaign_id}</div>
+          <div>ad squad: {result.ad_squad_id}</div>
+          <div>creative: {result.creative_id}</div>
+          <div>ad: {result.ad_id}</div>
+          <div>media: {result.media_id} ({result.media_status})</div>
+        </div>
+        <button onClick={onClose} style={{ ...primaryBtnStyle, marginTop: 14 }}>
+          Done
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} style={{ display: "grid", gap: 12 }}>
+      <Field label="Campaign name">
+        <input style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} placeholder="Summer Sale — KSA" />
+      </Field>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <Field label="Objective">
+          <select style={inputStyle} value={objective} onChange={(e) => setObjective(e.target.value as SnapObjective)}>
+            {OBJECTIVES.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Region">
+          <select style={inputStyle} value={countryCode} onChange={(e) => setCountryCode(e.target.value)}>
+            {REGIONS.map((r) => (
+              <option key={r.code} value={r.code}>{r.label}</option>
+            ))}
+          </select>
+        </Field>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <Field label={`Daily budget (${currency})`}>
+          <input
+            style={inputStyle}
+            type="number"
+            min={20}
+            step="1"
+            value={dailyBudget}
+            onChange={(e) => setDailyBudget(e.target.value)}
+          />
+        </Field>
+        <Field label="Media type">
+          <select style={inputStyle} value={mediaType} onChange={(e) => setMediaType(e.target.value as SnapMediaType)}>
+            <option value="VIDEO">Video</option>
+            <option value="IMAGE">Image</option>
+          </select>
+        </Field>
+      </div>
+
+      <Field label={`Headline (${headline.length}/34)`}>
+        <input style={inputStyle} maxLength={34} value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder="Shop the collection" />
+      </Field>
+
+      <Field label="Destination URL (swipe-up)">
+        <input style={inputStyle} value={destinationUrl} onChange={(e) => setDestinationUrl(e.target.value)} placeholder="https://store.example.com/product" />
+      </Field>
+
+      <Field label="Creative — public Google Drive link">
+        <input style={inputStyle} value={driveUrl} onChange={(e) => setDriveUrl(e.target.value)} placeholder="https://drive.google.com/file/d/.../view" />
+      </Field>
+
+      {error && (
+        <div style={{ fontSize: 12, color: "var(--danger)", background: "var(--danger-bg)", padding: "8px 10px", borderRadius: "var(--radius-sm)" }}>
+          {error}
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
+        <button type="button" onClick={onClose} disabled={submitting} style={ghostBtnStyle}>
+          Cancel
+        </button>
+        <button type="submit" disabled={!canSubmit} style={{ ...primaryBtnStyle, opacity: canSubmit ? 1 : 0.5, cursor: canSubmit ? "pointer" : "not-allowed" }}>
+          {submitting ? "Creating…" : "Create campaign"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+const primaryBtnStyle: React.CSSProperties = {
+  padding: "8px 16px",
+  borderRadius: "var(--radius-sm)",
+  border: "1px solid var(--accent)",
+  background: "var(--accent)",
+  color: "var(--text-inverse)",
+  fontSize: 13,
+  fontWeight: 600,
+  cursor: "pointer",
+  fontFamily: "var(--font-body)",
+};
+
+const ghostBtnStyle: React.CSSProperties = {
+  padding: "8px 16px",
+  borderRadius: "var(--radius-sm)",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-surface)",
+  color: "var(--text-primary)",
+  fontSize: 13,
+  fontWeight: 600,
+  cursor: "pointer",
+  fontFamily: "var(--font-body)",
+};
 
 export function SnapchatPanel() {
   const status = useSnapStatus();
@@ -122,6 +370,8 @@ export function SnapchatPanel() {
   const campaigns = useSnapCampaigns(adAccountId);
   const adsquads = useSnapAdSquads(adAccountId);
   const ads = useSnapAds(adAccountId);
+
+  const [showCreate, setShowCreate] = useState(false);
 
   /* --- not configured: surface a setup hint --- */
   if (status.isLoading) {
@@ -198,6 +448,20 @@ export function SnapchatPanel() {
         </div>
       </SectionCard>
 
+      {/* Create campaign form (toggled) */}
+      {showCreate && adAccountId && (
+        <SectionCard
+          title="Create campaign"
+          subtitle="Creates a real Snap campaign — PAUSED, no spend until you activate it"
+        >
+          <CreateCampaignForm
+            adAccountId={adAccountId}
+            currency={adAccount?.currency ?? "USD"}
+            onClose={() => setShowCreate(false)}
+          />
+        </SectionCard>
+      )}
+
       {/* Campaigns table */}
       <SectionCard
         title="Campaigns"
@@ -207,6 +471,13 @@ export function SnapchatPanel() {
             : campList.length
             ? `${campList.length} campaign${campList.length === 1 ? "" : "s"}`
             : "None yet"
+        }
+        action={
+          !showCreate && adAccountId ? (
+            <button onClick={() => setShowCreate(true)} style={primaryBtnStyle}>
+              + Create campaign
+            </button>
+          ) : undefined
         }
       >
         {campaigns.isLoading ? (
