@@ -823,6 +823,148 @@ body {
   align-items: start;
 }
 
+/* ── Actions grid — dense, equal-height cards with aligned footers ─────────
+   auto-fill minmax: 1 col mobile, 2 on laptop, 3+ on large. align-items:stretch
+   (grid default) so cards in a row match height and footers line up. */
+.actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+@media (max-width: 520px) {
+  .actions-grid { grid-template-columns: 1fr; }
+}
+
+/* Compact action card: flex column so the footer pins to the bottom */
+.action-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--accent-bar, var(--border-default));
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.action-card:hover {
+  border-color: var(--border-default);
+  box-shadow: 0 4px 16px oklch(0 0 0 / 0.28);
+}
+.action-card.is-resolved { opacity: 0.62; }
+
+.action-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.action-card__badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.action-card__impact {
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.action-card__title {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  margin-bottom: 4px;
+}
+.action-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  min-width: 0;
+  margin-bottom: 8px;
+}
+.action-card__meta .meta-gain { color: var(--success); font-weight: 600; white-space: nowrap; }
+.meta-dot { color: var(--text-tertiary); flex-shrink: 0; }
+
+.action-card__details {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  margin-bottom: 10px;
+  color: var(--accent);
+  font-size: 11.5px;
+  font-weight: 500;
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+.action-card__details:hover { text-decoration: underline; }
+
+/* Footer pinned to bottom → action buttons align across all cards in a row */
+.action-card__footer {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Hide native disclosure triangle on <details> accordions */
+details > summary { list-style: none; }
+details > summary::-webkit-details-marker { display: none; }
+
+/* 2-line clamp for titles */
+.clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── Modal (detail drawer for rationale) ─────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  background: oklch(0 0 0 / 0.55);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: content-in 0.15s ease;
+}
+.modal-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  width: 100%;
+  max-width: 460px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 16px 48px oklch(0 0 0 / 0.5);
+}
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+.modal-close:hover { background: var(--bg-elevated); color: var(--text-primary); }
+
 /* Insights attention strip */
 .insights-strip {
   display: flex;
