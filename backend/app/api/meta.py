@@ -8,6 +8,8 @@ from httpx import HTTPStatusError
 
 from app.deps import get_current_user
 from app.platforms.meta import get_meta_client, MetaAuthError
+from app.schemas.meta_create import CreateMetaCampaignRequest, CreateMetaCampaignResult
+from app.services.meta_campaigns import create_campaign_with_adset
 from app.settings import get_settings
 
 router = APIRouter(prefix="/meta", tags=["meta"])
@@ -87,3 +89,20 @@ async def insights(
             "limit": 100,
         },
     )
+
+
+@router.post("/campaigns/create", response_model=CreateMetaCampaignResult)
+async def create_campaign(
+    body: CreateMetaCampaignRequest,
+    _user=Depends(get_current_user),
+):
+    """Create a PAUSED campaign + ad set (targeting + budget) on Meta."""
+    try:
+        return await create_campaign_with_adset(body)
+    except MetaAuthError as e:
+        raise HTTPException(503, f"Meta auth error: {e}")
+    except HTTPStatusError as e:
+        raise HTTPException(
+            status_code=e.response.status_code,
+            detail=f"Meta API error: {e.response.text[:400]}",
+        )
