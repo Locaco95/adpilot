@@ -6,6 +6,7 @@ import { formatCurrency } from "@/lib/format";
 import { StatusBadge, TrendArrow, SkeletonGenericPage } from "@/components/ui";
 import type { Campaign } from "@/types";
 import { SnapchatPanel } from "./SnapchatPanel";
+import { MetaPanel } from "./MetaPanel";
 
 function MiniStat({ label, value, color }: { label: string; value: string | number; color: string }) {
   return (
@@ -23,10 +24,13 @@ export function CampaignsPage() {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
   const isSnap = platformFilter === "snapchat";
+  const isMeta = platformFilter === "meta";
+  // Live-API tabs render their own panel; the seeded-DB table/guards are skipped.
+  const isLiveTab = isSnap || isMeta;
   const { data: campaigns, isLoading, isError, error } = useCampaigns(platformFilter);
 
-  if (!isSnap && isLoading) return <SkeletonGenericPage title="Campaigns" />;
-  if (!isSnap && isError) return (
+  if (!isLiveTab && isLoading) return <SkeletonGenericPage title="Campaigns" />;
+  if (!isLiveTab && isError) return (
     <div style={{ padding: "24px", color: "var(--danger)" }}>Failed to load: {(error as Error)?.message}</div>
   );
 
@@ -71,9 +75,11 @@ export function CampaignsPage() {
         ))}
       </div>
 
-      {/* Snapchat tab: swap to live API data instead of the seeded DB table */}
+      {/* Snapchat + Meta tabs: swap to live API data instead of the seeded DB table */}
       {platformFilter === "snapchat" ? (
         <SnapchatPanel />
+      ) : platformFilter === "meta" ? (
+        <MetaPanel />
       ) : (
       <>
       {/* Summary bar */}
