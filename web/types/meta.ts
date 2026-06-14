@@ -39,3 +39,25 @@ export interface MetaListResponse<T> {
   data: T[];
   paging?: unknown;
 }
+
+export type MetaObjective =
+  | "OUTCOME_TRAFFIC"
+  | "OUTCOME_SALES"
+  | "OUTCOME_AWARENESS"
+  | "OUTCOME_ENGAGEMENT"
+  | "OUTCOME_LEADS";
+
+export interface CreateMetaCampaignRequest {
+  name: string;
+  objective: MetaObjective;
+  country_code: string;
+  daily_budget: number;
+  age_min: number;
+  age_max: number;
+}
+
+export interface CreateMetaCampaignResult {
+  campaign_id: string;
+  ad_set_id: string;
+  status: string;
+}
