@@ -13,7 +13,8 @@ from fastapi import APIRouter, HTTPException, Request
 from app.agents import telegram_agent
 from app.platforms.telegram import get_telegram_client, TelegramError
 from app.schemas.snap_create import CreateCampaignRequest
-from app.services import snap_campaigns
+from app.schemas.meta_create import CreateMetaCampaignRequest
+from app.services import snap_campaigns, meta_campaigns
 from app.settings import get_settings
 
 logger = logging.getLogger("adpilot.telegram")
@@ -49,6 +50,15 @@ async def _execute_action(action: telegram_agent.PendingAction) -> str:
             action.args["campaign_id"], action.args["status"]
         )
         return f"✅ Campaign {updated.get('name')} is now {updated.get('status')}"
+    if action.tool == "meta_create_campaign":
+        result = await meta_campaigns.create_campaign_with_adset(
+            CreateMetaCampaignRequest(**action.args)
+        )
+        return (
+            "✅ Meta campaign created (PAUSED — activate it to spend)\n"
+            f"campaign: {result.campaign_id}\n"
+            f"ad set: {result.ad_set_id}"
+        )
     return f"Unknown action tool: {action.tool}"
 
 

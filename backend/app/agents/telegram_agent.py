@@ -15,6 +15,7 @@ import uuid
 from dataclasses import dataclass, field
 
 from app.platforms.snap import get_snap_client
+from app.platforms.meta import get_meta_client
 from app.services import llm
 from app.settings import get_settings
 
@@ -22,9 +23,13 @@ MAX_LOOP_ITERATIONS = 6
 HISTORY_MAX_MESSAGES = 12
 PENDING_TTL_SEC = 15 * 60
 
-SYSTEM_PROMPT = """You are AdPilot, a media-buying assistant for a Snapchat ad account, \
-talking to the operator over Telegram. Reply in the user's language (Arabic or English). \
-Be concise — short sentences, no markdown headers.
+SYSTEM_PROMPT = """You are AdPilot, a media-buying assistant for Snapchat AND Meta (Facebook) \
+ad accounts, talking to the operator over Telegram. Reply in the user's language (Arabic or \
+English). Be concise — short sentences, no markdown headers.
+
+Snapchat tools have plain names (list_campaigns, create_campaign, ...). Meta tools are prefixed \
+meta_ (meta_list_campaigns, meta_create_campaign, ...). When the user names a platform, use that \
+one; if they don't say, ask which platform — never guess. Snap budgets/ids ≠ Meta budgets/ids.
 
 You have tools to read live account data and to request write actions. \
 Write actions (create campaign, change budget, pause/activate) are NOT executed by you — \
@@ -90,15 +95,40 @@ TOOLS = [
     }},
     {"type": "function", "function": {
         "name": "set_campaign_status",
-        "description": "WRITE: pause or activate a campaign. Requires operator approval.",
+        "description": "WRITE (Snapchat): pause or activate a Snapchat campaign. Requires operator approval.",
         "parameters": {"type": "object", "properties": {
             "campaign_id": {"type": "string"},
             "status": {"type": "string", "enum": ["ACTIVE", "PAUSED"]},
         }, "required": ["campaign_id", "status"]},
     }},
+    # ---- Meta reads ----
+    {"type": "function", "function": {
+        "name": "meta_get_account_overview",
+        "description": "Meta (Facebook) ad account info: name, status, currency, timezone, spend.",
+        "parameters": {"type": "object", "properties": {}, "required": []},
+    }},
+    {"type": "function", "function": {
+        "name": "meta_list_campaigns",
+        "description": "List Meta campaigns with id, name, status, objective, daily budget.",
+        "parameters": {"type": "object", "properties": {}, "required": []},
+    }},
+    # ---- Meta writes (confirm-gated) ----
+    {"type": "function", "function": {
+        "name": "meta_create_campaign",
+        "description": "WRITE (Meta): create a PAUSED campaign + ad set (targeting + budget). Requires operator approval. No creative/Drive needed at this layer.",
+        "parameters": {"type": "object", "properties": {
+            "name": {"type": "string"},
+            "objective": {"type": "string", "enum": ["OUTCOME_TRAFFIC", "OUTCOME_SALES", "OUTCOME_AWARENESS", "OUTCOME_ENGAGEMENT", "OUTCOME_LEADS"]},
+            "country_code": {"type": "string", "description": "ISO-2, e.g. SA"},
+            "daily_budget": {"type": "number", "description": "In the account currency; Meta enforces a per-account minimum"},
+        }, "required": ["name", "objective", "country_code", "daily_budget"]},
+    }},
 ]
 
-WRITE_TOOLS = {"create_campaign", "update_budget", "set_campaign_status"}
+WRITE_TOOLS = {
+    "create_campaign", "update_budget", "set_campaign_status",
+    "meta_create_campaign",
+}
 
 
 @dataclass
@@ -171,6 +201,19 @@ async def _run_read_tool(name: str, args: dict) -> str:
             params={"granularity": "TOTAL", "fields": "spend,impressions,swipes,video_views"},
         )
         return json.dumps(data.get("total_stats", data))
+
+    # ---- Meta reads ----
+    if name == "meta_get_account_overview":
+        m = get_meta_client()
+        macct = s.meta_ad_account_id
+        data = await m.get(f"/{macct}", params={"fields": "name,account_status,currency,timezone_name,amount_spent"})
+        return json.dumps(data)
+    if name == "meta_list_campaigns":
+        m = get_meta_client()
+        macct = s.meta_ad_account_id
+        data = await m.get(f"/{macct}/campaigns", params={"fields": "name,status,objective,daily_budget", "limit": 100})
+        return json.dumps(data.get("data", []))
+
     return json.dumps({"error": f"unknown tool {name}"})
 
 
@@ -196,6 +239,14 @@ def _summarize_write(tool: str, args: dict) -> str:
         return (
             f"Set campaign {args.get('status')}:\n"
             f"• campaign: {args.get('campaign_id')}"
+        )
+    if tool == "meta_create_campaign":
+        return (
+            "Create Meta campaign + ad set (PAUSED):\n"
+            f"• name: {args.get('name')}\n"
+            f"• objective: {args.get('objective')}\n"
+            f"• region: {str(args.get('country_code', '')).upper()}\n"
+            f"• daily budget: {args.get('daily_budget')}"
         )
     return f"{tool}: {json.dumps(args)}"
 
