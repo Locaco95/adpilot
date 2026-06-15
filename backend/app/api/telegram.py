@@ -129,7 +129,11 @@ async def webhook(secret: str, request: Request):
         return {"ok": True}
 
     try:
-        reply = await telegram_agent.handle_message(chat_id, text)
+        from app.database import AsyncSessionLocal
+        from app.services import llm_models
+        async with AsyncSessionLocal() as db:
+            model = await llm_models.get_current_model(db)
+        reply = await telegram_agent.handle_message(chat_id, text, model=model)
     except Exception as e:
         logger.exception("agent error")
         try:
