@@ -251,7 +251,7 @@ def _summarize_write(tool: str, args: dict) -> str:
     return f"{tool}: {json.dumps(args)}"
 
 
-async def handle_message(chat_id: int, text: str) -> AgentReply:
+async def handle_message(chat_id: int, text: str, model: str | None = None) -> AgentReply:
     history = _histories.setdefault(chat_id, [])
     history.append({"role": "user", "content": text})
     del history[:-HISTORY_MAX_MESSAGES]
@@ -259,7 +259,7 @@ async def handle_message(chat_id: int, text: str) -> AgentReply:
     messages = [{"role": "system", "content": SYSTEM_PROMPT}, *history]
 
     for _ in range(MAX_LOOP_ITERATIONS):
-        assistant = await llm.chat(messages, tools=TOOLS)
+        assistant = await llm.chat(messages, tools=TOOLS, model=model)
         tool_calls = assistant.get("tool_calls") or []
 
         if not tool_calls:

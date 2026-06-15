@@ -20,13 +20,18 @@ class LLMError(RuntimeError):
 async def chat(
     messages: list[dict],
     tools: list[dict] | None = None,
+    model: str | None = None,
 ) -> dict[str, Any]:
-    """Returns the assistant message dict (may contain tool_calls)."""
+    """Returns the assistant message dict (may contain tool_calls).
+
+    `model` overrides the configured default (the DB-selected model is passed
+    in by the agent); falls back to settings.llm_model.
+    """
     s = get_settings()
     if not s.openrouter_api_key:
         raise LLMError("OPENROUTER_API_KEY not configured.")
     payload: dict[str, Any] = {
-        "model": s.llm_model,
+        "model": model or s.llm_model,
         "messages": messages,
     }
     if tools:

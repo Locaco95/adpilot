@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { TELEGRAM_MESSAGES } from "@/lib/constants";
 import type { TelegramMessage } from "@/types";
+import { ModelSelector } from "./ModelSelector";
 
 /* ── Telegram Bubble ─────────────────────────────────────── */
 function TelegramBubble({
@@ -88,11 +89,12 @@ export function TelegramPage() {
 
   return (
     <div>
-      <div className="page-header">
+      <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
         <div>
           <div className="page-title">Telegram</div>
-          <div className="page-subtitle">Approval workflow preview · Bot @adpilot_bot</div>
+          <div className="page-subtitle">Chat-control your campaigns · Bot @ExodiaadsBot</div>
         </div>
+        <ModelSelector />
       </div>
 
       <div className="grid-2 fade-in" style={{ alignItems: "start", marginBottom: 24 }}>
