@@ -13,18 +13,41 @@ from app.settings import get_settings
 
 CONFIG_KEY = "llm_model"
 
-# OpenRouter slugs grouped by provider. Keep tool-calling-capable models.
+# OpenRouter slugs grouped by provider. Every id verified against the live
+# OpenRouter /models list (2026-06-15). Tool-calling-capable models only.
 MODEL_OPTIONS = [
+    # ---- OpenAI ----
     {"provider": "OpenAI", "id": "openai/gpt-4o-mini", "label": "GPT-4o mini (fast, cheap)"},
     {"provider": "OpenAI", "id": "openai/gpt-4o", "label": "GPT-4o"},
+    {"provider": "OpenAI", "id": "openai/gpt-4o-2024-11-20", "label": "GPT-4o (Nov 2024)"},
     {"provider": "OpenAI", "id": "openai/gpt-4.1", "label": "GPT-4.1"},
     {"provider": "OpenAI", "id": "openai/gpt-4.1-mini", "label": "GPT-4.1 mini"},
-    {"provider": "Anthropic", "id": "anthropic/claude-3.5-sonnet", "label": "Claude 3.5 Sonnet"},
+    {"provider": "OpenAI", "id": "openai/gpt-4.1-nano", "label": "GPT-4.1 nano"},
+    {"provider": "OpenAI", "id": "openai/gpt-4-turbo", "label": "GPT-4 Turbo"},
+    {"provider": "OpenAI", "id": "openai/o3", "label": "o3 (reasoning)"},
+    {"provider": "OpenAI", "id": "openai/o3-mini", "label": "o3-mini (reasoning)"},
+    {"provider": "OpenAI", "id": "openai/o4-mini", "label": "o4-mini (reasoning)"},
+    # ---- Anthropic ----
+    {"provider": "Anthropic", "id": "anthropic/claude-3-haiku", "label": "Claude 3 Haiku"},
     {"provider": "Anthropic", "id": "anthropic/claude-3.5-haiku", "label": "Claude 3.5 Haiku"},
-    {"provider": "Anthropic", "id": "anthropic/claude-3.7-sonnet", "label": "Claude 3.7 Sonnet"},
-    {"provider": "Google", "id": "google/gemini-2.0-flash-001", "label": "Gemini 2.0 Flash"},
-    {"provider": "Google", "id": "google/gemini-2.5-pro", "label": "Gemini 2.5 Pro"},
+    {"provider": "Anthropic", "id": "anthropic/claude-haiku-4.5", "label": "Claude Haiku 4.5"},
+    {"provider": "Anthropic", "id": "anthropic/claude-sonnet-4", "label": "Claude Sonnet 4"},
+    {"provider": "Anthropic", "id": "anthropic/claude-sonnet-4.5", "label": "Claude Sonnet 4.5"},
+    {"provider": "Anthropic", "id": "anthropic/claude-sonnet-4.6", "label": "Claude Sonnet 4.6"},
+    {"provider": "Anthropic", "id": "anthropic/claude-opus-4", "label": "Claude Opus 4"},
+    {"provider": "Anthropic", "id": "anthropic/claude-opus-4.1", "label": "Claude Opus 4.1"},
+    {"provider": "Anthropic", "id": "anthropic/claude-opus-4.5", "label": "Claude Opus 4.5"},
+    {"provider": "Anthropic", "id": "anthropic/claude-opus-4.6", "label": "Claude Opus 4.6"},
+    {"provider": "Anthropic", "id": "anthropic/claude-opus-4.7", "label": "Claude Opus 4.7"},
+    {"provider": "Anthropic", "id": "anthropic/claude-opus-4.8", "label": "Claude Opus 4.8 (latest)"},
+    {"provider": "Anthropic", "id": "anthropic/claude-fable-5", "label": "Claude Fable 5"},
+    # ---- Google ----
+    {"provider": "Google", "id": "google/gemini-2.5-flash-lite", "label": "Gemini 2.5 Flash Lite"},
     {"provider": "Google", "id": "google/gemini-2.5-flash", "label": "Gemini 2.5 Flash"},
+    {"provider": "Google", "id": "google/gemini-2.5-pro", "label": "Gemini 2.5 Pro"},
+    {"provider": "Google", "id": "google/gemini-3.1-flash-lite", "label": "Gemini 3.1 Flash Lite"},
+    {"provider": "Google", "id": "google/gemini-3.5-flash", "label": "Gemini 3.5 Flash"},
+    {"provider": "Google", "id": "google/gemini-3.1-pro-preview", "label": "Gemini 3.1 Pro (preview)"},
 ]
 
 VALID_IDS = {m["id"] for m in MODEL_OPTIONS}
