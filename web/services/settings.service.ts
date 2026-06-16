@@ -19,3 +19,16 @@ export function getLLMModel(): Promise<LLMModelState> {
 export function setLLMModel(model: string): Promise<LLMModelState> {
   return apiPost<LLMModelState>("/settings/llm", { model });
 }
+
+/* ── Google Drive connection ── */
+export interface DriveStatus {
+  connected: boolean;
+}
+
+export function getDriveStatus(): Promise<DriveStatus> {
+  return apiGet<DriveStatus>("/drive/status");
+}
+
+export function getDriveAuthUrl(): Promise<{ url: string }> {
+  return apiGet<{ url: string }>("/drive/auth/url");
+}

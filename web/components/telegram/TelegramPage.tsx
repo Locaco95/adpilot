@@ -3,6 +3,7 @@ import { useState } from "react";
 import { TELEGRAM_MESSAGES } from "@/lib/constants";
 import type { TelegramMessage } from "@/types";
 import { ModelSelector } from "./ModelSelector";
+import { DriveConnect } from "./DriveConnect";
 
 /* ── Telegram Bubble ─────────────────────────────────────── */
 function TelegramBubble({
@@ -94,7 +95,10 @@ export function TelegramPage() {
           <div className="page-title">Telegram</div>
           <div className="page-subtitle">Chat-control your campaigns · Bot @ExodiaadsBot</div>
         </div>
-        <ModelSelector />
+        <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
+          <DriveConnect />
+          <ModelSelector />
+        </div>
       </div>
 
       <div className="grid-2 fade-in" style={{ alignItems: "start", marginBottom: 24 }}>

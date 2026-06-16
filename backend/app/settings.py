@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     llm_model: str = "openai/gpt-4o-mini"
 
+    # Google Drive (OAuth)
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_oauth_redirect: str = ""
+
     # App
     environment: str = "development"
     config_path: str = "config/thresholds.yaml"
