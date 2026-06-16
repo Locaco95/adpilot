@@ -36,6 +36,9 @@ class CreateMetaCampaignRequest(BaseModel):
     daily_budget: float = Field(..., gt=0, description="In the ad account's currency (Meta enforces a per-account minimum)")
     age_min: int = Field(18, ge=13, le=65)
     age_max: int = Field(65, ge=13, le=65)
+    # TODO: forward-ready — consumed once the Meta creative/ad layer is built; it
+    # will obtain media via the shared services.media_service.get_creative_media().
+    creative_file_id: str | None = Field(None, description="Google Drive file id (OAuth) for the future creative layer.")
 
 
 class CreateMetaCampaignResult(BaseModel):

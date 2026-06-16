@@ -32,3 +32,20 @@ export function getDriveStatus(): Promise<DriveStatus> {
 export function getDriveAuthUrl(): Promise<{ url: string }> {
   return apiGet<{ url: string }>("/drive/auth/url");
 }
+
+export interface DriveFile {
+  id: string;
+  name: string;
+  mimeType: string;
+  size?: string;
+}
+
+export interface DriveFolderResponse {
+  files: DriveFile[];
+  count: number;
+}
+
+/* List image/video files in a Drive folder (link or id) via the OAuth connection. */
+export function getDriveFolder(url: string): Promise<DriveFolderResponse> {
+  return apiGet<DriveFolderResponse>(`/drive/folder?url=${encodeURIComponent(url)}`);
+}

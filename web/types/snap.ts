@@ -134,8 +134,9 @@ export interface CreateCampaignRequest {
   daily_budget: number;     // in the ad account's currency
   destination_url: string;
   headline: string;         // max 34 chars
-  drive_url: string;        // public Google Drive share link
-  media_type: SnapMediaType;
+  creative_file_id?: string; // Google Drive file id (OAuth) — preferred
+  drive_url?: string;        // DEPRECATED public Drive link (legacy/Telegram)
+  media_type?: SnapMediaType; // optional; backend derives from MIME for file_id
 }
 
 export interface CreateCampaignResult {

@@ -11,6 +11,7 @@ import logging
 from fastapi import APIRouter, HTTPException, Request
 
 from app.agents import telegram_agent
+from app.database import AsyncSessionLocal
 from app.platforms.telegram import get_telegram_client, TelegramError
 from app.schemas.snap_create import CreateCampaignRequest
 from app.schemas.meta_create import CreateMetaCampaignRequest
@@ -30,9 +31,12 @@ def _authorized_chat(chat_id: int) -> bool:
 async def _execute_action(action: telegram_agent.PendingAction) -> str:
     """Run an approved write through the shared service. Returns a result text."""
     if action.tool == "create_campaign":
-        result = await snap_campaigns.create_full_campaign(
-            CreateCampaignRequest(**action.args)
-        )
+        # Telegram still sends drive_url (legacy); create_full_campaign needs a db
+        # session for the shared media layer.
+        async with AsyncSessionLocal() as db:
+            result = await snap_campaigns.create_full_campaign(
+                CreateCampaignRequest(**action.args), db
+            )
         return (
             "✅ Campaign created (PAUSED — activate it to spend)\n"
             f"campaign: {result.campaign_id}\n"

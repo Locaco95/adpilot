@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class SnapObjective(str, Enum):
@@ -36,8 +36,18 @@ class CreateCampaignRequest(BaseModel):
     daily_budget: float = Field(..., ge=20, description="In the ad account's currency; Snap min is 20")
     destination_url: str = Field(..., description="Where the swipe-up goes (WEB_VIEW url)")
     headline: str = Field(..., max_length=34)
-    drive_url: str = Field(..., description="Public Google Drive share link to the creative")
-    media_type: SnapMediaType = SnapMediaType.VIDEO
+
+    # Creative source — prefer the OAuth Drive file id; drive_url is the legacy path.
+    creative_file_id: str | None = Field(None, description="Google Drive file id (OAuth). Preferred.")
+    drive_url: str | None = Field(None, description="DEPRECATED public Drive link. TODO: remove once Telegram migrates.")
+    # Optional now: derived from the Drive file's MIME when creative_file_id is used.
+    media_type: SnapMediaType | None = None
+
+    @model_validator(mode="after")
+    def _require_a_creative_source(self) -> "CreateCampaignRequest":
+        if not self.creative_file_id and not self.drive_url:
+            raise ValueError("Provide creative_file_id (preferred) or drive_url.")
+        return self
 
 
 class CreateCampaignResult(BaseModel):

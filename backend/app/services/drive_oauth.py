@@ -30,7 +30,22 @@ _access_expires_at: float = 0.0
 
 
 class DriveError(RuntimeError):
-    pass
+    """Drive failure carrying a coarse `code` so callers can map to HTTP status.
+
+    codes: not_connected | not_found | access_denied | refresh_failed | unsupported | drive_error
+    """
+
+    def __init__(self, message: str, code: str = "drive_error") -> None:
+        super().__init__(message)
+        self.code = code
+
+
+def _code_for_status(status_code: int) -> str:
+    if status_code == 404:
+        return "not_found"
+    if status_code in (401, 403):
+        return "access_denied"
+    return "drive_error"
 
 
 def build_auth_url(state: str) -> str:
@@ -104,7 +119,11 @@ async def _access_token_from_refresh(refresh_token: str) -> str:
             "grant_type": "refresh_token",
         })
     if r.status_code != 200:
-        raise DriveError(f"Drive refresh failed: HTTP {r.status_code}: {r.text[:300]}")
+        raise DriveError(
+            f"Google Drive token refresh failed (HTTP {r.status_code}). "
+            f"Reconnect Drive in the dashboard. {r.text[:200]}",
+            code="refresh_failed",
+        )
     body = r.json()
     _access_token = body["access_token"]
     _access_expires_at = time.time() + int(body.get("expires_in", 3600))
@@ -121,12 +140,20 @@ def extract_folder_id(url_or_id: str) -> str:
     return s.split("?")[0].split("/")[0].strip()
 
 
-async def list_folder_media(db: AsyncSession, folder_url_or_id: str) -> list[dict[str, Any]]:
-    """List image/video files directly inside a Drive folder."""
+async def _token_or_raise(db: AsyncSession) -> str:
+    """Resolve an access token, raising a not_connected DriveError if unlinked."""
     refresh = await get_stored_refresh_token(db)
     if not refresh:
-        raise DriveError("Google Drive not connected. Connect it in the dashboard first.")
-    token = await _access_token_from_refresh(refresh)
+        raise DriveError(
+            "Google Drive not connected. Connect it in the dashboard first.",
+            code="not_connected",
+        )
+    return await _access_token_from_refresh(refresh)
+
+
+async def list_folder_media(db: AsyncSession, folder_url_or_id: str) -> list[dict[str, Any]]:
+    """List image/video files directly inside a Drive folder."""
+    token = await _token_or_raise(db)
     folder_id = extract_folder_id(folder_url_or_id)
     q = f"'{folder_id}' in parents and trashed = false and (mimeType contains 'image/' or mimeType contains 'video/')"
     async with httpx.AsyncClient(timeout=30) as h:
@@ -136,15 +163,32 @@ async def list_folder_media(db: AsyncSession, folder_url_or_id: str) -> list[dic
             headers={"Authorization": f"Bearer {token}"},
         )
     if r.status_code != 200:
-        raise DriveError(f"Drive list failed: HTTP {r.status_code}: {r.text[:300]}")
+        raise DriveError(
+            f"Could not list Drive folder (HTTP {r.status_code}): {r.text[:200]}",
+            code=_code_for_status(r.status_code),
+        )
     return r.json().get("files", [])
 
 
+async def get_file_metadata(db: AsyncSession, file_id: str) -> dict[str, Any]:
+    """Fetch a single file's id, name, mimeType, size."""
+    token = await _token_or_raise(db)
+    async with httpx.AsyncClient(timeout=30) as h:
+        r = await h.get(
+            f"{DRIVE_API}/files/{file_id}",
+            params={"fields": "id,name,mimeType,size"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    if r.status_code != 200:
+        raise DriveError(
+            f"Could not read Drive file metadata (HTTP {r.status_code}): {r.text[:200]}",
+            code=_code_for_status(r.status_code),
+        )
+    return r.json()
+
+
 async def download_file(db: AsyncSession, file_id: str) -> bytes:
-    refresh = await get_stored_refresh_token(db)
-    if not refresh:
-        raise DriveError("Google Drive not connected.")
-    token = await _access_token_from_refresh(refresh)
+    token = await _token_or_raise(db)
     async with httpx.AsyncClient(timeout=120) as h:
         r = await h.get(
             f"{DRIVE_API}/files/{file_id}",
@@ -152,5 +196,8 @@ async def download_file(db: AsyncSession, file_id: str) -> bytes:
             headers={"Authorization": f"Bearer {token}"},
         )
     if r.status_code != 200:
-        raise DriveError(f"Drive download failed: HTTP {r.status_code}: {r.text[:200]}")
+        raise DriveError(
+            f"Could not download Drive file (HTTP {r.status_code}): {r.text[:200]}",
+            code=_code_for_status(r.status_code),
+        )
     return r.content

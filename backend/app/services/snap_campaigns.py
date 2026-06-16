@@ -11,6 +11,7 @@ import asyncio
 from datetime import datetime, timezone
 
 from fastapi import HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.platforms.snap import get_snap_client
 from app.schemas.snap_create import (
@@ -18,7 +19,7 @@ from app.schemas.snap_create import (
     CreateCampaignResult,
     OBJECTIVE_OPTIMIZATION,
 )
-from app.services.drive import download_public_drive_file, DriveError
+from app.services.media_service import get_creative_media
 from app.settings import get_settings
 
 MEDIA_READY_TIMEOUT_SEC = 60
@@ -56,7 +57,9 @@ def _first(data: dict, key: str) -> dict:
     return obj
 
 
-async def create_full_campaign(body: CreateCampaignRequest) -> CreateCampaignResult:
+async def create_full_campaign(
+    body: CreateCampaignRequest, db: AsyncSession
+) -> CreateCampaignResult:
     s = get_settings()
     ad_account_id = s.snapchat_ad_account_id
     if not ad_account_id:
@@ -64,29 +67,27 @@ async def create_full_campaign(body: CreateCampaignRequest) -> CreateCampaignRes
 
     client = get_snap_client()
 
-    # 1. Download creative from Google Drive (public link)
-    try:
-        content, filename, content_type = await download_public_drive_file(body.drive_url)
-    except DriveError as e:
-        raise HTTPException(422, f"Drive download failed: {e}")
+    # 1-3. Acquire creative via the shared media layer (OAuth Drive file id preferred;
+    # legacy drive_url still supported). Media lives in a temp file, auto-cleaned.
+    media_hint = body.media_type.value if body.media_type else None
+    async with get_creative_media(db, body.creative_file_id, body.drive_url, media_hint) as creative:
+        media_resp = await client.post(
+            f"/adaccounts/{ad_account_id}/media",
+            json={"media": [{
+                "name": f"{body.name} media",
+                "type": creative.media_type.value,
+                "ad_account_id": ad_account_id,
+            }]},
+        )
+        media = _first(media_resp, "media")
+        media_id = media["id"]
 
-    # 2. Create media entity
-    media_resp = await client.post(
-        f"/adaccounts/{ad_account_id}/media",
-        json={"media": [{
-            "name": f"{body.name} media",
-            "type": body.media_type.value,
-            "ad_account_id": ad_account_id,
-        }]},
-    )
-    media = _first(media_resp, "media")
-    media_id = media["id"]
+        with open(creative.path, "rb") as fh:
+            await client.post_multipart(
+                f"/media/{media_id}/upload",
+                files={"file": (creative.filename, fh, creative.content_type)},
+            )
 
-    # 3. Upload the file bytes
-    await client.post_multipart(
-        f"/media/{media_id}/upload",
-        files={"file": (filename, content, content_type)},
-    )
     media_status = await _wait_for_media_ready(client, media_id)
     if media_status != "READY":
         raise HTTPException(

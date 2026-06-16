@@ -7,8 +7,9 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
 from httpx import HTTPStatusError
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.deps import get_current_user
+from app.deps import get_current_user, get_db
 from app.platforms.snap import SnapAuthError
 from app.schemas.snap_create import CreateCampaignRequest, CreateCampaignResult
 from app.services.snap_campaigns import create_full_campaign
@@ -19,10 +20,11 @@ router = APIRouter(prefix="/snap", tags=["snap"])
 @router.post("/campaigns/create", response_model=CreateCampaignResult)
 async def create_campaign(
     body: CreateCampaignRequest,
+    db: AsyncSession = Depends(get_db),
     _user=Depends(get_current_user),
 ):
     try:
-        return await create_full_campaign(body)
+        return await create_full_campaign(body, db)
     except SnapAuthError as e:
         raise HTTPException(503, f"Snap auth error: {e}")
     except HTTPStatusError as e:

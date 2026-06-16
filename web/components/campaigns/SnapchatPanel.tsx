@@ -11,11 +11,11 @@ import {
   snapKeys,
 } from "@/hooks/useSnap";
 import { createSnapCampaign } from "@/services/snap.service";
+import { DriveFilePicker } from "@/components/common/DriveFilePicker";
 import type {
   SnapAdAccount,
   SnapCampaign,
   SnapObjective,
-  SnapMediaType,
   CreateCampaignResult,
 } from "@/types/snap";
 
@@ -181,8 +181,7 @@ function CreateCampaignForm({
   const [dailyBudget, setDailyBudget] = useState("20");
   const [destinationUrl, setDestinationUrl] = useState("");
   const [headline, setHeadline] = useState("");
-  const [driveUrl, setDriveUrl] = useState("");
-  const [mediaType, setMediaType] = useState<SnapMediaType>("VIDEO");
+  const [creativeFileId, setCreativeFileId] = useState<string | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -194,7 +193,7 @@ function CreateCampaignForm({
     headline.trim() &&
     headline.length <= 34 &&
     destinationUrl.trim() &&
-    driveUrl.trim() &&
+    !!creativeFileId &&
     budgetNum >= 20 &&
     !submitting;
 
@@ -210,8 +209,7 @@ function CreateCampaignForm({
         daily_budget: budgetNum,
         destination_url: destinationUrl.trim(),
         headline: headline.trim(),
-        drive_url: driveUrl.trim(),
-        media_type: mediaType,
+        creative_file_id: creativeFileId!,
       });
       setResult(res);
       qc.invalidateQueries({ queryKey: snapKeys.campaigns(adAccountId) });
@@ -267,24 +265,16 @@ function CreateCampaignForm({
         </Field>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <Field label={`Daily budget (${currency})`}>
-          <input
-            style={inputStyle}
-            type="number"
-            min={20}
-            step="1"
-            value={dailyBudget}
-            onChange={(e) => setDailyBudget(e.target.value)}
-          />
-        </Field>
-        <Field label="Media type">
-          <select style={inputStyle} value={mediaType} onChange={(e) => setMediaType(e.target.value as SnapMediaType)}>
-            <option value="VIDEO">Video</option>
-            <option value="IMAGE">Image</option>
-          </select>
-        </Field>
-      </div>
+      <Field label={`Daily budget (${currency})`}>
+        <input
+          style={inputStyle}
+          type="number"
+          min={20}
+          step="1"
+          value={dailyBudget}
+          onChange={(e) => setDailyBudget(e.target.value)}
+        />
+      </Field>
 
       <Field label={`Headline (${headline.length}/34)`}>
         <input style={inputStyle} maxLength={34} value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder="Shop the collection" />
@@ -294,8 +284,8 @@ function CreateCampaignForm({
         <input style={inputStyle} value={destinationUrl} onChange={(e) => setDestinationUrl(e.target.value)} placeholder="https://store.example.com/product" />
       </Field>
 
-      <Field label="Creative — public Google Drive link">
-        <input style={inputStyle} value={driveUrl} onChange={(e) => setDriveUrl(e.target.value)} placeholder="https://drive.google.com/file/d/.../view" />
+      <Field label="Creative — from Google Drive">
+        <DriveFilePicker selectedFileId={creativeFileId} onSelect={(id) => setCreativeFileId(id)} />
       </Field>
 
       {error && (
