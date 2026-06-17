@@ -57,6 +57,51 @@ class MetaClient:
         r.raise_for_status()
         return r.json()
 
+    async def post_multipart(self, path: str, files: dict, data: dict | None = None) -> dict[str, Any]:
+        """Multipart POST (for /adimages and /advideos uploads)."""
+        token = self._require()
+        url = path if path.startswith("http") else f"{API_BASE}{path}"
+        body = {"access_token": token, **(data or {})}
+        async with httpx.AsyncClient(timeout=180) as h:
+            r = await h.post(url, data=body, files=files)
+        r.raise_for_status()
+        return r.json()
+
+    async def upload_image(self, ad_account_id: str, path: str, filename: str, content_type: str) -> str:
+        """Upload an image to /adimages; return its image_hash."""
+        with open(path, "rb") as fh:
+            resp = await self.post_multipart(
+                f"/{ad_account_id}/adimages",
+                files={"filename": (filename, fh, content_type)},
+            )
+        images = resp.get("images", {})
+        if not images:
+            raise MetaAuthError(f"Meta returned no image hash: {resp}")
+        # response is keyed by the uploaded filename; take the first entry
+        first = next(iter(images.values()))
+        return first["hash"]
+
+    async def upload_video(self, ad_account_id: str, path: str, filename: str, content_type: str) -> str:
+        """Upload a video to /advideos; return its video id."""
+        with open(path, "rb") as fh:
+            resp = await self.post_multipart(
+                f"/{ad_account_id}/advideos",
+                files={"source": (filename, fh, content_type)},
+            )
+        vid = resp.get("id")
+        if not vid:
+            raise MetaAuthError(f"Meta returned no video id: {resp}")
+        return vid
+
+    async def get_video_thumbnail(self, video_id: str) -> str | None:
+        """Best-effort: return a thumbnail URL for an uploaded video, if available."""
+        try:
+            data = await self.get(f"/{video_id}", params={"fields": "thumbnails"})
+            thumbs = (data.get("thumbnails") or {}).get("data") or []
+            return thumbs[0]["uri"] if thumbs else None
+        except Exception:
+            return None
+
 
 _singleton: MetaClient | None = None
 

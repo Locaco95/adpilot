@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMetaStatus, useMetaAccount, useMetaCampaigns, useMetaInsights, metaKeys } from "@/hooks/useMeta";
 import { createMetaCampaign } from "@/services/meta.service";
+import { DriveFilePicker } from "@/components/common/DriveFilePicker";
 import type { MetaCampaign, MetaInsightRow, MetaObjective, CreateMetaCampaignResult } from "@/types/meta";
 
 const REGIONS: { code: string; label: string }[] = [
@@ -29,6 +30,9 @@ function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone
   const [objective, setObjective] = useState<MetaObjective>("OUTCOME_TRAFFIC");
   const [country, setCountry] = useState("SA");
   const [budget, setBudget] = useState("100");
+  const [destinationUrl, setDestinationUrl] = useState("");
+  const [headline, setHeadline] = useState("");
+  const [creativeFileId, setCreativeFileId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CreateMetaCampaignResult | null>(null);
@@ -45,11 +49,17 @@ function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone
     if (!name.trim()) { setError("Name is required."); return; }
     const b = Number(budget);
     if (!b || b <= 0) { setError("Enter a daily budget."); return; }
+    if (creativeFileId && !destinationUrl.trim()) { setError("Add a destination URL for the creative."); return; }
     setSubmitting(true);
     try {
       const res = await createMetaCampaign({
         name: name.trim(), objective, country_code: country,
         daily_budget: b, age_min: 18, age_max: 65,
+        ...(creativeFileId ? {
+          creative_file_id: creativeFileId,
+          destination_url: destinationUrl.trim(),
+          headline: headline.trim() || undefined,
+        } : {}),
       });
       setResult(res);
       qc.invalidateQueries({ queryKey: metaKeys.campaigns() });
@@ -67,9 +77,13 @@ function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone
         <div style={{ fontSize: 12, color: "var(--text-secondary)", fontFamily: "var(--font-mono)", lineHeight: 1.7 }}>
           <div>campaign: {result.campaign_id}</div>
           <div>ad set: {result.ad_set_id}</div>
+          {result.creative_id && <div>creative: {result.creative_id}</div>}
+          {result.ad_id && <div>ad: {result.ad_id}</div>}
         </div>
         <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 8 }}>
-          Created paused — activate it in Ads Manager (needs an ad + payment method to spend).
+          {result.ad_id
+            ? "Created paused — activate it in Ads Manager (needs a payment method to spend)."
+            : "Created paused — add an ad creative + payment method in Ads Manager to spend."}
         </div>
         <button onClick={onDone} style={{ ...inputStyle, width: "auto", marginTop: 12, cursor: "pointer", fontWeight: 600 }}>Done</button>
       </div>
@@ -103,11 +117,35 @@ function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone
         <div style={{ display: "flex", alignItems: "flex-end", fontSize: 11, color: "var(--text-tertiary)" }}>
           Targets ages 18–65 · created PAUSED
         </div>
+
+        {/* Optional creative + ad — when a file is picked, an ad creative + ad are created too */}
+        <div style={{ gridColumn: "1 / -1", marginTop: 6 }}>
+          <label style={labelStyle}>Creative — from Google Drive (optional)</label>
+          <DriveFilePicker selectedFileId={creativeFileId} onSelect={(id) => setCreativeFileId(id)} />
+        </div>
+
+        {creativeFileId && (
+          <>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={labelStyle}>Destination URL (required for the ad)</label>
+              <input style={inputStyle} value={destinationUrl} onChange={(e) => setDestinationUrl(e.target.value)} placeholder="https://store.example.com/product" />
+            </div>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={labelStyle}>Headline (optional)</label>
+              <input style={inputStyle} maxLength={255} value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder="Shop the collection" />
+            </div>
+          </>
+        )}
       </div>
 
       {error && <div style={{ color: "var(--danger)", fontSize: 12, marginTop: 10 }}>{error}</div>}
 
-      <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+      <div style={{ display: "flex", gap: 8, marginTop: 14, alignItems: "center" }}>
+        {creativeFileId && !destinationUrl.trim() && (
+          <span style={{ fontSize: 12, color: "var(--text-tertiary)", marginRight: "auto" }}>
+            Add a destination URL to publish the ad
+          </span>
+        )}
         <button onClick={submit} disabled={submitting}
           style={{ ...inputStyle, width: "auto", cursor: submitting ? "default" : "pointer", fontWeight: 600,
             background: "var(--accent)", color: "var(--text-inverse)", border: "none", opacity: submitting ? 0.6 : 1 }}>

@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     meta_app_secret: str = ""
     meta_access_token: str = ""
     meta_ad_account_id: str = ""
+    meta_page_id: str = ""  # Facebook Page that ad creatives post from (required for the ad/creative layer)
 
     # TikTok
     tiktok_access_token: str = ""

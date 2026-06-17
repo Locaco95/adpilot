@@ -54,10 +54,18 @@ export interface CreateMetaCampaignRequest {
   daily_budget: number;
   age_min: number;
   age_max: number;
+  // Optional creative/ad layer (media via Google Drive OAuth)
+  creative_file_id?: string;
+  destination_url?: string;
+  headline?: string;
+  message?: string;
+  call_to_action?: string;
 }
 
 export interface CreateMetaCampaignResult {
   campaign_id: string;
   ad_set_id: string;
+  creative_id?: string | null;
+  ad_id?: string | null;
   status: string;
 }

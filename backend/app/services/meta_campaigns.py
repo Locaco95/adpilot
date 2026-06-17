@@ -1,8 +1,11 @@
-"""Meta campaign + ad set write operations, shared by web API and (later) Telegram.
+"""Meta campaign write operations, shared by web API and Telegram.
 
-Creates a PAUSED campaign + PAUSED ad set (targeting + budget). The ad/creative
-layer (needs a Page + payment method) is a later slice. Budgets are sent in the
-account's minor units (e.g. EGP piastres / USD cents). Meta enforces a per-account
+Creates a PAUSED campaign + PAUSED ad set (targeting + budget). When a
+creative_file_id is supplied, it also builds the ad/creative layer — the media
+comes from the shared services.media_service (Google Drive OAuth), is uploaded
+to Meta, and a PAUSED ad creative + ad are created. Needs META_PAGE_ID set.
+
+Budgets are sent in the account's minor units (cents). Meta enforces a per-account
 daily minimum and returns a clear error if the budget is below it.
 """
 from __future__ import annotations
@@ -10,6 +13,7 @@ from __future__ import annotations
 import json
 
 from fastapi import HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.platforms.meta import get_meta_client
 from app.schemas.meta_create import (
@@ -17,10 +21,13 @@ from app.schemas.meta_create import (
     CreateMetaCampaignResult,
     OBJECTIVE_OPTIMIZATION,
 )
+from app.services.media_service import get_creative_media, MediaType
 from app.settings import get_settings
 
 
-async def create_campaign_with_adset(body: CreateMetaCampaignRequest) -> CreateMetaCampaignResult:
+async def create_campaign_with_adset(
+    body: CreateMetaCampaignRequest, db: AsyncSession
+) -> CreateMetaCampaignResult:
     s = get_settings()
     acct = s.meta_ad_account_id
     if not acct:
@@ -65,8 +72,71 @@ async def create_campaign_with_adset(body: CreateMetaCampaignRequest) -> CreateM
     )
     ad_set_id = ad_set["id"]
 
+    # 3. Optional creative + ad layer. Without a creative_file_id we stop at the
+    #    campaign + ad set (backward compatible with the Telegram meta tool).
+    if not body.creative_file_id:
+        return CreateMetaCampaignResult(
+            campaign_id=campaign_id, ad_set_id=ad_set_id, status="PAUSED",
+        )
+
+    page_id = s.meta_page_id
+    if not page_id:
+        raise HTTPException(503, "META_PAGE_ID not configured — required to create ad creatives.")
+
+    cta = {"type": body.call_to_action, "value": {"link": body.destination_url}}
+
+    async with get_creative_media(db, body.creative_file_id, None) as creative:
+        if creative.media_type == MediaType.IMAGE:
+            image_hash = await client.upload_image(acct, creative.path, creative.filename, creative.content_type)
+            object_story_spec = {
+                "page_id": page_id,
+                "link_data": {
+                    "message": body.message or "",
+                    "link": body.destination_url,
+                    "name": body.headline or "",
+                    "image_hash": image_hash,
+                    "call_to_action": cta,
+                },
+            }
+        else:  # VIDEO
+            video_id = await client.upload_video(acct, creative.path, creative.filename, creative.content_type)
+            video_data = {
+                "message": body.message or "",
+                "video_id": video_id,
+                "title": body.headline or "",
+                "call_to_action": cta,
+            }
+            thumb = await client.get_video_thumbnail(video_id)
+            if thumb:
+                video_data["image_url"] = thumb
+            object_story_spec = {"page_id": page_id, "video_data": video_data}
+
+    # 4. Ad creative (PAUSED ad references it)
+    creative_resp = await client.post(
+        f"/{acct}/adcreatives",
+        data={
+            "name": f"{body.name} creative",
+            "object_story_spec": json.dumps(object_story_spec),
+        },
+    )
+    creative_id = creative_resp["id"]
+
+    # 5. Ad (PAUSED) linking the creative to the ad set
+    ad_resp = await client.post(
+        f"/{acct}/ads",
+        data={
+            "name": f"{body.name} ad",
+            "adset_id": ad_set_id,
+            "creative": json.dumps({"creative_id": creative_id}),
+            "status": "PAUSED",
+        },
+    )
+    ad_id = ad_resp["id"]
+
     return CreateMetaCampaignResult(
         campaign_id=campaign_id,
         ad_set_id=ad_set_id,
+        creative_id=creative_id,
+        ad_id=ad_id,
         status="PAUSED",
     )

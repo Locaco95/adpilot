@@ -55,9 +55,10 @@ async def _execute_action(action: telegram_agent.PendingAction) -> str:
         )
         return f"✅ Campaign {updated.get('name')} is now {updated.get('status')}"
     if action.tool == "meta_create_campaign":
-        result = await meta_campaigns.create_campaign_with_adset(
-            CreateMetaCampaignRequest(**action.args)
-        )
+        async with AsyncSessionLocal() as db:
+            result = await meta_campaigns.create_campaign_with_adset(
+                CreateMetaCampaignRequest(**action.args), db
+            )
         return (
             "✅ Meta campaign created (PAUSED — activate it to spend)\n"
             f"campaign: {result.campaign_id}\n"

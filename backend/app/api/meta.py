@@ -5,8 +5,9 @@ long-lived token (no end-user OAuth flow).
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from httpx import HTTPStatusError
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.deps import get_current_user
+from app.deps import get_current_user, get_db
 from app.platforms.meta import get_meta_client, MetaAuthError
 from app.schemas.meta_create import CreateMetaCampaignRequest, CreateMetaCampaignResult
 from app.services.meta_campaigns import create_campaign_with_adset
@@ -94,11 +95,13 @@ async def insights(
 @router.post("/campaigns/create", response_model=CreateMetaCampaignResult)
 async def create_campaign(
     body: CreateMetaCampaignRequest,
+    db: AsyncSession = Depends(get_db),
     _user=Depends(get_current_user),
 ):
-    """Create a PAUSED campaign + ad set (targeting + budget) on Meta."""
+    """Create a PAUSED campaign + ad set, plus a PAUSED ad creative + ad when a
+    creative_file_id is provided (media via Google Drive OAuth)."""
     try:
-        return await create_campaign_with_adset(body)
+        return await create_campaign_with_adset(body, db)
     except MetaAuthError as e:
         raise HTTPException(503, f"Meta auth error: {e}")
     except HTTPStatusError as e:
