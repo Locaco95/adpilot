@@ -294,7 +294,12 @@ function CreateCampaignForm({
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center", marginTop: 4 }}>
+        {!creativeFileId && (
+          <span style={{ fontSize: 12, color: "var(--text-tertiary)", marginRight: "auto" }}>
+            Select a creative to continue
+          </span>
+        )}
         <button type="button" onClick={onClose} disabled={submitting} style={ghostBtnStyle}>
           Cancel
         </button>
