@@ -16,11 +16,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.deps import get_db, get_current_user
 from app.services import drive_oauth
 from app.services.drive_oauth import DriveError
+from app.settings import get_settings
 
 router = APIRouter(prefix="/drive", tags=["drive"])
 
 # short-lived CSRF states for the consent round-trip (in-memory; single operator)
 _states: set[str] = set()
+
+# DriveError.code → HTTP status (mirrors services.media_service)
+_DRIVE_STATUS = {
+    "not_connected": 409,
+    "not_found": 404,
+    "access_denied": 403,
+    "refresh_failed": 503,
+    "unsupported": 422,
+    "drive_error": 502,
+}
 
 
 @router.get("/status")
@@ -72,5 +83,22 @@ async def list_folder(
     try:
         files = await drive_oauth.list_folder_media(db, url)
     except DriveError as e:
-        raise HTTPException(422, str(e))
+        raise HTTPException(_DRIVE_STATUS.get(e.code, 502), str(e))
+    return {"files": files, "count": len(files)}
+
+
+@router.get("/default-folder")
+async def default_folder(
+    db: AsyncSession = Depends(get_db),
+    _user=Depends(get_current_user),
+):
+    """List media in the shared creative folder — the media library source.
+    Frontend never needs to know the folder id/URL."""
+    fid = get_settings().default_creative_folder_id
+    if not fid:
+        raise HTTPException(503, "No default creative folder configured.")
+    try:
+        files = await drive_oauth.list_folder_media(db, fid)
+    except DriveError as e:
+        raise HTTPException(_DRIVE_STATUS.get(e.code, 502), str(e))
     return {"files": files, "count": len(files)}

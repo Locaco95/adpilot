@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMetaStatus, useMetaAccount, useMetaCampaigns, useMetaInsights, metaKeys } from "@/hooks/useMeta";
 import { createMetaCampaign } from "@/services/meta.service";
-import { DriveFilePicker } from "@/components/common/DriveFilePicker";
+import { CreativePicker } from "@/components/common/CreativePicker";
 import type { MetaCampaign, MetaInsightRow, MetaObjective, CreateMetaCampaignResult } from "@/types/meta";
 
 const REGIONS: { code: string; label: string }[] = [
@@ -121,7 +121,7 @@ function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone
         {/* Optional creative + ad — when a file is picked, an ad creative + ad are created too */}
         <div style={{ gridColumn: "1 / -1", marginTop: 6 }}>
           <label style={labelStyle}>Creative — from Google Drive (optional)</label>
-          <DriveFilePicker selectedFileId={creativeFileId} onSelect={(id) => setCreativeFileId(id)} />
+          <CreativePicker selectedFileId={creativeFileId} onSelect={(id) => setCreativeFileId(id)} />
         </div>
 
         {creativeFileId && (

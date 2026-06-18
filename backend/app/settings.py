@@ -58,6 +58,8 @@ class Settings(BaseSettings):
     google_client_id: str = ""
     google_client_secret: str = ""
     google_oauth_redirect: str = ""
+    # Shared folder all creatives are uploaded into — the media library source.
+    default_creative_folder_id: str = "11mvbN_Gr1wKP7-F8rCTWeASsLCZ-dQYn"
 
     # App
     environment: str = "development"

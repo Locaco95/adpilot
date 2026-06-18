@@ -49,3 +49,9 @@ export interface DriveFolderResponse {
 export function getDriveFolder(url: string): Promise<DriveFolderResponse> {
   return apiGet<DriveFolderResponse>(`/drive/folder?url=${encodeURIComponent(url)}`);
 }
+
+/* List creatives from the shared default folder — the media library source.
+   No folder URL/id required from the client. */
+export function getDefaultCreatives(): Promise<DriveFolderResponse> {
+  return apiGet<DriveFolderResponse>("/drive/default-folder");
+}

@@ -11,7 +11,7 @@ import {
   snapKeys,
 } from "@/hooks/useSnap";
 import { createSnapCampaign } from "@/services/snap.service";
-import { DriveFilePicker } from "@/components/common/DriveFilePicker";
+import { CreativePicker } from "@/components/common/CreativePicker";
 import type {
   SnapAdAccount,
   SnapCampaign,
@@ -285,7 +285,7 @@ function CreateCampaignForm({
       </Field>
 
       <Field label="Creative — from Google Drive">
-        <DriveFilePicker selectedFileId={creativeFileId} onSelect={(id) => setCreativeFileId(id)} />
+        <CreativePicker selectedFileId={creativeFileId} onSelect={(id) => setCreativeFileId(id)} />
       </Field>
 
       {error && (
