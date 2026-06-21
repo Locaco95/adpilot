@@ -43,7 +43,7 @@ async def account(_user=Depends(get_current_user)):
     s = get_settings()
     return await _call(
         f"/{s.meta_ad_account_id}",
-        params={"fields": "name,account_status,currency,timezone_name,amount_spent,balance"},
+        params={"fields": "name,account_status,currency,timezone_name,amount_spent,balance,funding_source_details"},
     )
 
 

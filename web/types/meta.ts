@@ -12,6 +12,11 @@ export interface MetaAccount {
   timezone_name?: string;
   amount_spent?: string;
   balance?: string;
+  funding_source_details?: {
+    id?: string;
+    type?: number;
+    display_string?: string; // e.g. "Available balance (EGP1,000.00)"
+  };
   id?: string;
 }
 

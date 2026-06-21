@@ -239,6 +239,12 @@ export function MetaPanel() {
           </div>
         </div>
         <div style={{ display: "flex", gap: 20, marginTop: 14, flexWrap: "wrap" }}>
+          <div>
+            <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>Available balance</div>
+            <div style={{ fontWeight: 700, color: account?.funding_source_details?.display_string ? "var(--success)" : "var(--text-primary)" }}>
+              {account?.funding_source_details?.display_string ?? "No payment method"}
+            </div>
+          </div>
           <div><div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>Currency</div><div style={{ fontWeight: 600 }}>{currency}</div></div>
           <div><div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>Timezone</div><div style={{ fontWeight: 600 }}>{account?.timezone_name ?? "—"}</div></div>
           <div><div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>Spent (lifetime)</div><div style={{ fontWeight: 600 }}>{centsToCurrency(account?.amount_spent, currency)}</div></div>
