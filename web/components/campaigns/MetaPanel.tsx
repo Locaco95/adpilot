@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMetaStatus, useMetaAccount, useMetaCampaigns, useMetaInsights, metaKeys } from "@/hooks/useMeta";
+import { useMetaStatus, useMetaAccount, useMetaCampaigns, useMetaInsights, useSetMetaCampaignStatus, metaKeys } from "@/hooks/useMeta";
 import { createMetaCampaign } from "@/services/meta.service";
 import { CreativePicker } from "@/components/common/CreativePicker";
 import type { MetaCampaign, MetaInsightRow, MetaObjective, CreateMetaCampaignResult } from "@/types/meta";
@@ -82,7 +82,7 @@ function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone
         </div>
         <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 8 }}>
           {result.ad_id
-            ? "Created paused — activate it in Ads Manager (needs a payment method to spend)."
+            ? "Created paused — hit Activate on its row below to go live (spends real money)."
             : "Created paused — add an ad creative + payment method in Ads Manager to spend."}
         </div>
         <button onClick={onDone} style={{ ...inputStyle, width: "auto", marginTop: 12, cursor: "pointer", fontWeight: 600 }}>Done</button>
@@ -179,14 +179,50 @@ function centsToCurrency(s: string | undefined, currency = "USD"): string {
   }
 }
 
+/* Modal asking the operator to confirm going live (real spend). */
+function ActivateConfirm({ name, busy, onConfirm, onCancel }: {
+  name: string; busy: boolean; onConfirm: () => void; onCancel: () => void;
+}) {
+  return (
+    <div onClick={onCancel} style={{
+      position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 1000,
+      display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+    }}>
+      <div onClick={(e) => e.stopPropagation()} className="card" style={{ padding: 22, maxWidth: 420, width: "100%" }}>
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>Activate “{name}”?</div>
+        <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>
+          This sets the campaign, its ad set and ad to <b>Active</b> and starts
+          <b> real ad delivery</b>. Meta will begin spending from your account balance.
+        </div>
+        <div style={{ display: "flex", gap: 8, marginTop: 18, justifyContent: "flex-end" }}>
+          <button onClick={onCancel} disabled={busy}
+            style={{ background: "var(--bg-input)", border: "1px solid var(--border-subtle)", color: "var(--text-primary)",
+              borderRadius: "var(--radius-sm)", padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+            Cancel
+          </button>
+          <button onClick={onConfirm} disabled={busy}
+            style={{ background: "var(--success)", border: "none", color: "var(--text-inverse)",
+              borderRadius: "var(--radius-sm)", padding: "8px 14px", fontSize: 13, fontWeight: 700,
+              cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1 }}>
+            {busy ? "Activating…" : "Activate & spend"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function MetaPanel() {
   const { data: status, isLoading: statusLoading } = useMetaStatus();
   const connected = !!status?.configured;
   const [showCreate, setShowCreate] = useState(false);
+  const [confirmCampaign, setConfirmCampaign] = useState<MetaCampaign | null>(null);
 
   const { data: account } = useMetaAccount(connected);
   const { data: campaignsResp, isLoading: campaignsLoading, isError, error } = useMetaCampaigns(connected);
   const { data: insightsResp } = useMetaInsights("campaign", "last_7d", connected);
+  const setStatus = useSetMetaCampaignStatus();
+  const pendingId = setStatus.isPending ? (setStatus.variables?.id ?? null) : null;
 
   const currency = account?.currency ?? "USD";
   const campaigns = useMemo<MetaCampaign[]>(() => campaignsResp?.data ?? [], [campaignsResp]);
@@ -279,12 +315,14 @@ export function MetaPanel() {
                 <th style={{ width: 90 }}>7d Spend</th>
                 <th className="col-hide-mobile" style={{ width: 70 }}>Clicks</th>
                 <th className="col-hide-mobile" style={{ width: 64 }}>CTR</th>
+                <th style={{ width: 96 }}></th>
               </tr>
             </thead>
             <tbody>
               {campaigns.map((c) => {
                 const ins = insights[c.name];
                 const active = c.status === "ACTIVE";
+                const rowBusy = pendingId === c.id;
                 return (
                   <tr key={c.id}>
                     <td className="col-name">{c.name}</td>
@@ -294,6 +332,27 @@ export function MetaPanel() {
                     <td>{ins?.spend ? `${Number(ins.spend).toFixed(2)} ${currency}` : "—"}</td>
                     <td className="col-hide-mobile">{ins?.clicks ?? "—"}</td>
                     <td className="col-hide-mobile">{ins?.ctr ? `${Number(ins.ctr).toFixed(2)}%` : "—"}</td>
+                    <td>
+                      {active ? (
+                        <button
+                          onClick={() => setStatus.mutate({ id: c.id, status: "PAUSED" })}
+                          disabled={rowBusy}
+                          style={{ background: "var(--bg-input)", border: "1px solid var(--border-subtle)",
+                            color: "var(--text-primary)", borderRadius: "var(--radius-sm)", padding: "5px 10px",
+                            fontSize: 12, fontWeight: 600, cursor: rowBusy ? "default" : "pointer", opacity: rowBusy ? 0.6 : 1 }}>
+                          {rowBusy ? "…" : "Pause"}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmCampaign(c)}
+                          disabled={rowBusy}
+                          style={{ background: "var(--success)", border: "none", color: "var(--text-inverse)",
+                            borderRadius: "var(--radius-sm)", padding: "5px 10px", fontSize: 12, fontWeight: 700,
+                            cursor: rowBusy ? "default" : "pointer", opacity: rowBusy ? 0.6 : 1 }}>
+                          {rowBusy ? "…" : "Activate"}
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -301,6 +360,20 @@ export function MetaPanel() {
           </table>
         )}
       </div>
+
+      {confirmCampaign && (
+        <ActivateConfirm
+          name={confirmCampaign.name}
+          busy={setStatus.isPending}
+          onCancel={() => setConfirmCampaign(null)}
+          onConfirm={() =>
+            setStatus.mutate(
+              { id: confirmCampaign.id, status: "ACTIVE" },
+              { onSettled: () => setConfirmCampaign(null) }
+            )
+          }
+        />
+      )}
     </div>
   );
 }

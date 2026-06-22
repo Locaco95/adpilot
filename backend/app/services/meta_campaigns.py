@@ -140,3 +140,31 @@ async def create_campaign_with_adset(
         ad_id=ad_id,
         status="PAUSED",
     )
+
+
+async def set_campaign_status(campaign_id: str, status: str) -> dict:
+    """Set a campaign and all of its ad sets + ads to ACTIVE or PAUSED.
+
+    Meta tracks status independently at each level, so activating only the
+    campaign won't deliver if its ad sets/ads are still paused. We cascade to
+    every child so the web toggle matches what the operator expects.
+    """
+    status = status.upper()
+    if status not in ("ACTIVE", "PAUSED"):
+        raise HTTPException(400, "status must be ACTIVE or PAUSED.")
+
+    client = get_meta_client()
+
+    # Campaign first.
+    await client.post(f"/{campaign_id}", data={"status": status})
+
+    # Then every ad set under it, and every ad under each ad set.
+    adsets = await client.get(f"/{campaign_id}/adsets", params={"fields": "id", "limit": 100})
+    adset_ids = [a["id"] for a in adsets.get("data", [])]
+    for adset_id in adset_ids:
+        await client.post(f"/{adset_id}", data={"status": status})
+        ads = await client.get(f"/{adset_id}/ads", params={"fields": "id", "limit": 100})
+        for ad in ads.get("data", []):
+            await client.post(f"/{ad['id']}", data={"status": status})
+
+    return {"campaign_id": campaign_id, "status": status, "ad_sets_updated": len(adset_ids)}

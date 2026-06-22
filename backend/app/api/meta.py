@@ -9,8 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import get_current_user, get_db
 from app.platforms.meta import get_meta_client, MetaAuthError
+from pydantic import BaseModel
+
 from app.schemas.meta_create import CreateMetaCampaignRequest, CreateMetaCampaignResult
-from app.services.meta_campaigns import create_campaign_with_adset
+from app.services.meta_campaigns import create_campaign_with_adset, set_campaign_status
 from app.settings import get_settings
 
 router = APIRouter(prefix="/meta", tags=["meta"])
@@ -52,7 +54,7 @@ async def campaigns(_user=Depends(get_current_user)):
     s = get_settings()
     return await _call(
         f"/{s.meta_ad_account_id}/campaigns",
-        params={"fields": "name,status,objective,daily_budget,lifetime_budget,created_time", "limit": 100},
+        params={"fields": "name,status,effective_status,objective,daily_budget,lifetime_budget,created_time", "limit": 100},
     )
 
 
@@ -102,6 +104,32 @@ async def create_campaign(
     creative_file_id is provided (media via Google Drive OAuth)."""
     try:
         return await create_campaign_with_adset(body, db)
+    except MetaAuthError as e:
+        raise HTTPException(503, f"Meta auth error: {e}")
+    except HTTPStatusError as e:
+        raise HTTPException(
+            status_code=e.response.status_code,
+            detail=f"Meta API error: {e.response.text[:400]}",
+        )
+
+
+class SetStatusRequest(BaseModel):
+    status: str  # "ACTIVE" | "PAUSED"
+
+
+@router.post("/campaigns/{campaign_id}/status")
+async def campaign_status(
+    campaign_id: str,
+    body: SetStatusRequest,
+    _user=Depends(get_current_user),
+):
+    """Activate or pause a campaign and all of its ad sets + ads.
+
+    Activating starts real ad delivery (and spend); the frontend gates this
+    behind a confirmation dialog.
+    """
+    try:
+        return await set_campaign_status(campaign_id, body.status)
     except MetaAuthError as e:
         raise HTTPException(503, f"Meta auth error: {e}")
     except HTTPStatusError as e:

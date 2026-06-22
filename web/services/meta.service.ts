@@ -36,3 +36,11 @@ export function createMetaCampaign(
 ): Promise<CreateMetaCampaignResult> {
   return apiPost<CreateMetaCampaignResult>("/meta/campaigns/create", payload);
 }
+
+/* Activate or pause a campaign + all its ad sets + ads. Activating spends real money. */
+export function setMetaCampaignStatus(
+  campaignId: string,
+  status: "ACTIVE" | "PAUSED"
+): Promise<{ campaign_id: string; status: string; ad_sets_updated: number }> {
+  return apiPost(`/meta/campaigns/${campaignId}/status`, { status });
+}

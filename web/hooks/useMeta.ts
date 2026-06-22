@@ -1,9 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getMetaStatus,
   getMetaAccount,
   getMetaCampaigns,
   getMetaInsights,
+  setMetaCampaignStatus,
 } from "@/services/meta.service";
 
 export const metaKeys = {
@@ -55,5 +56,16 @@ export function useMetaInsights(
     staleTime: 30_000,
     enabled,
     retry: false,
+  });
+}
+
+export function useSetMetaCampaignStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: "ACTIVE" | "PAUSED" }) =>
+      setMetaCampaignStatus(id, status),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: metaKeys.campaigns() });
+    },
   });
 }

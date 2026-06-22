@@ -24,6 +24,7 @@ export interface MetaCampaign {
   id: string;
   name: string;
   status: string;
+  effective_status?: string; // true delivery state (ACTIVE only if ad set + ad also active)
   objective?: string;
   daily_budget?: string;
   lifetime_budget?: string;
