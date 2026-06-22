@@ -1,10 +1,10 @@
 "use client";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMetaStatus, useMetaAccount, useMetaCampaigns, useMetaInsights, useSetMetaCampaignStatus, metaKeys } from "@/hooks/useMeta";
+import { useMetaStatus, useMetaAccount, useMetaCampaigns, useMetaInsights, useSetMetaCampaignStatus, useMetaCampaignAdSets, useSetMetaAdSetStatus, metaKeys } from "@/hooks/useMeta";
 import { createMetaCampaign } from "@/services/meta.service";
 import { CreativePicker } from "@/components/common/CreativePicker";
-import type { MetaCampaign, MetaInsightRow, MetaObjective, CreateMetaCampaignResult } from "@/types/meta";
+import type { MetaCampaign, MetaAdSet, MetaInsightRow, MetaObjective, CreateMetaCampaignResult } from "@/types/meta";
 
 const REGIONS: { code: string; label: string }[] = [
   { code: "SA", label: "Saudi Arabia" },
@@ -24,42 +24,116 @@ const OBJECTIVES: { value: MetaObjective; label: string }[] = [
   { value: "OUTCOME_LEADS", label: "Leads" },
 ];
 
+const inputStyle: React.CSSProperties = {
+  width: "100%", background: "var(--bg-input)", border: "1px solid var(--border-subtle)",
+  borderRadius: "var(--radius-sm)", padding: "8px 10px", color: "var(--text-primary)",
+  fontSize: 13, outline: "none",
+};
+const labelStyle: React.CSSProperties = { fontSize: 11, color: "var(--text-tertiary)", marginBottom: 4, display: "block", fontWeight: 600 };
+
+/* One editable ad set in the create form. */
+interface AdSetDraft {
+  country: string;
+  budget: string;
+  creativeFileId: string | null;
+  destinationUrl: string;
+  headline: string;
+}
+
+function emptyAdSet(): AdSetDraft {
+  return { country: "SA", budget: "100", creativeFileId: null, destinationUrl: "", headline: "" };
+}
+
+function AdSetCard({ index, total, draft, onChange, onRemove, currency }: {
+  index: number; total: number; draft: AdSetDraft;
+  onChange: (d: AdSetDraft) => void; onRemove: () => void; currency: string;
+}) {
+  const set = (patch: Partial<AdSetDraft>) => onChange({ ...draft, ...patch });
+  return (
+    <div style={{ border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-sm)", padding: 14, background: "var(--bg-subtle, transparent)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)" }}>Ad set {index + 1}</span>
+        {total > 1 && (
+          <button onClick={onRemove}
+            style={{ background: "transparent", border: "none", color: "var(--danger)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+            Remove
+          </button>
+        )}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div>
+          <label style={labelStyle}>Region</label>
+          <select style={inputStyle} value={draft.country} onChange={(e) => set({ country: e.target.value })}>
+            {REGIONS.map((r) => <option key={r.code} value={r.code}>{r.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={labelStyle}>Daily budget ({currency})</label>
+          <input style={inputStyle} type="number" value={draft.budget} onChange={(e) => set({ budget: e.target.value })} />
+        </div>
+        <div style={{ gridColumn: "1 / -1" }}>
+          <label style={labelStyle}>Creative — from Google Drive (optional)</label>
+          <CreativePicker selectedFileId={draft.creativeFileId} onSelect={(id) => set({ creativeFileId: id })} />
+        </div>
+        {draft.creativeFileId && (
+          <>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={labelStyle}>Destination URL (required for the ad)</label>
+              <input style={inputStyle} value={draft.destinationUrl} onChange={(e) => set({ destinationUrl: e.target.value })} placeholder="https://store.example.com/product" />
+            </div>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={labelStyle}>Headline (optional)</label>
+              <input style={inputStyle} maxLength={255} value={draft.headline} onChange={(e) => set({ headline: e.target.value })} placeholder="Shop the collection" />
+            </div>
+          </>
+        )}
+      </div>
+      <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 8 }}>Targets ages 18–65 · created PAUSED</div>
+    </div>
+  );
+}
+
 function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone: () => void }) {
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [objective, setObjective] = useState<MetaObjective>("OUTCOME_TRAFFIC");
-  const [country, setCountry] = useState("SA");
-  const [budget, setBudget] = useState("100");
-  const [destinationUrl, setDestinationUrl] = useState("");
-  const [headline, setHeadline] = useState("");
-  const [creativeFileId, setCreativeFileId] = useState<string | null>(null);
+  const [adSets, setAdSets] = useState<AdSetDraft[]>([emptyAdSet()]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CreateMetaCampaignResult | null>(null);
 
-  const inputStyle: React.CSSProperties = {
-    width: "100%", background: "var(--bg-input)", border: "1px solid var(--border-subtle)",
-    borderRadius: "var(--radius-sm)", padding: "8px 10px", color: "var(--text-primary)",
-    fontSize: 13, outline: "none",
-  };
-  const labelStyle: React.CSSProperties = { fontSize: 11, color: "var(--text-tertiary)", marginBottom: 4, display: "block", fontWeight: 600 };
+  function updateAdSet(i: number, d: AdSetDraft) {
+    setAdSets((prev) => prev.map((s, idx) => (idx === i ? d : s)));
+  }
+  function removeAdSet(i: number) {
+    setAdSets((prev) => prev.filter((_, idx) => idx !== i));
+  }
 
   async function submit() {
     setError(null);
-    if (!name.trim()) { setError("Name is required."); return; }
-    const b = Number(budget);
-    if (!b || b <= 0) { setError("Enter a daily budget."); return; }
-    if (creativeFileId && !destinationUrl.trim()) { setError("Add a destination URL for the creative."); return; }
+    if (!name.trim()) { setError("Campaign name is required."); return; }
+    for (let i = 0; i < adSets.length; i++) {
+      const a = adSets[i];
+      const b = Number(a.budget);
+      if (!b || b <= 0) { setError(`Ad set ${i + 1}: enter a daily budget.`); return; }
+      if (a.creativeFileId && !a.destinationUrl.trim()) { setError(`Ad set ${i + 1}: add a destination URL for the creative.`); return; }
+    }
     setSubmitting(true);
     try {
       const res = await createMetaCampaign({
-        name: name.trim(), objective, country_code: country,
-        daily_budget: b, age_min: 18, age_max: 65,
-        ...(creativeFileId ? {
-          creative_file_id: creativeFileId,
-          destination_url: destinationUrl.trim(),
-          headline: headline.trim() || undefined,
-        } : {}),
+        name: name.trim(),
+        objective,
+        ad_sets: adSets.map((a) => ({
+          country_code: a.country,
+          daily_budget: Number(a.budget),
+          age_min: 18,
+          age_max: 65,
+          ...(a.creativeFileId ? {
+            creative_file_id: a.creativeFileId,
+            destination_url: a.destinationUrl.trim(),
+            headline: a.headline.trim() || undefined,
+          } : {}),
+        })),
       });
       setResult(res);
       qc.invalidateQueries({ queryKey: metaKeys.campaigns() });
@@ -76,14 +150,16 @@ function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone
         <div style={{ fontSize: 14, fontWeight: 700, color: "var(--success)", marginBottom: 8 }}>✓ Campaign created (PAUSED)</div>
         <div style={{ fontSize: 12, color: "var(--text-secondary)", fontFamily: "var(--font-mono)", lineHeight: 1.7 }}>
           <div>campaign: {result.campaign_id}</div>
-          <div>ad set: {result.ad_set_id}</div>
-          {result.creative_id && <div>creative: {result.creative_id}</div>}
-          {result.ad_id && <div>ad: {result.ad_id}</div>}
+          {result.ad_sets.map((a, i) => (
+            <div key={a.ad_set_id} style={{ marginTop: i ? 6 : 4 }}>
+              <div>ad set {i + 1} ({a.country_code}): {a.ad_set_id}</div>
+              {a.creative_id && <div>  creative: {a.creative_id}</div>}
+              {a.ad_id && <div>  ad: {a.ad_id}</div>}
+            </div>
+          ))}
         </div>
         <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 8 }}>
-          {result.ad_id
-            ? "Created paused — hit Activate on its row below to go live (spends real money)."
-            : "Created paused — add an ad creative + payment method in Ads Manager to spend."}
+          Created paused — hit Activate on the campaign row below to go live (spends real money).
         </div>
         <button onClick={onDone} style={{ ...inputStyle, width: "auto", marginTop: 12, cursor: "pointer", fontWeight: 600 }}>Done</button>
       </div>
@@ -98,58 +174,34 @@ function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone
           <label style={labelStyle}>Campaign name</label>
           <input style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. KSA Summer Sale" />
         </div>
-        <div>
-          <label style={labelStyle}>Objective</label>
+        <div style={{ gridColumn: "1 / -1" }}>
+          <label style={labelStyle}>Objective (applies to the whole campaign)</label>
           <select style={inputStyle} value={objective} onChange={(e) => setObjective(e.target.value as MetaObjective)}>
             {OBJECTIVES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
-        <div>
-          <label style={labelStyle}>Region</label>
-          <select style={inputStyle} value={country} onChange={(e) => setCountry(e.target.value)}>
-            {REGIONS.map((r) => <option key={r.code} value={r.code}>{r.label}</option>)}
-          </select>
-        </div>
-        <div>
-          <label style={labelStyle}>Daily budget ({currency})</label>
-          <input style={inputStyle} type="number" value={budget} onChange={(e) => setBudget(e.target.value)} />
-        </div>
-        <div style={{ display: "flex", alignItems: "flex-end", fontSize: 11, color: "var(--text-tertiary)" }}>
-          Targets ages 18–65 · created PAUSED
-        </div>
-
-        {/* Optional creative + ad — when a file is picked, an ad creative + ad are created too */}
-        <div style={{ gridColumn: "1 / -1", marginTop: 6 }}>
-          <label style={labelStyle}>Creative — from Google Drive (optional)</label>
-          <CreativePicker selectedFileId={creativeFileId} onSelect={(id) => setCreativeFileId(id)} />
-        </div>
-
-        {creativeFileId && (
-          <>
-            <div style={{ gridColumn: "1 / -1" }}>
-              <label style={labelStyle}>Destination URL (required for the ad)</label>
-              <input style={inputStyle} value={destinationUrl} onChange={(e) => setDestinationUrl(e.target.value)} placeholder="https://store.example.com/product" />
-            </div>
-            <div style={{ gridColumn: "1 / -1" }}>
-              <label style={labelStyle}>Headline (optional)</label>
-              <input style={inputStyle} maxLength={255} value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder="Shop the collection" />
-            </div>
-          </>
-        )}
       </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 14 }}>
+        {adSets.map((a, i) => (
+          <AdSetCard key={i} index={i} total={adSets.length} draft={a} currency={currency}
+            onChange={(d) => updateAdSet(i, d)} onRemove={() => removeAdSet(i)} />
+        ))}
+      </div>
+
+      <button onClick={() => setAdSets((prev) => [...prev, emptyAdSet()])}
+        style={{ ...inputStyle, width: "auto", marginTop: 12, cursor: "pointer", fontWeight: 600,
+          background: "transparent", border: "1px dashed var(--border-subtle)", color: "var(--text-secondary)" }}>
+        + Add ad set
+      </button>
 
       {error && <div style={{ color: "var(--danger)", fontSize: 12, marginTop: 10 }}>{error}</div>}
 
       <div style={{ display: "flex", gap: 8, marginTop: 14, alignItems: "center" }}>
-        {creativeFileId && !destinationUrl.trim() && (
-          <span style={{ fontSize: 12, color: "var(--text-tertiary)", marginRight: "auto" }}>
-            Add a destination URL to publish the ad
-          </span>
-        )}
         <button onClick={submit} disabled={submitting}
           style={{ ...inputStyle, width: "auto", cursor: submitting ? "default" : "pointer", fontWeight: 600,
             background: "var(--accent)", color: "var(--text-inverse)", border: "none", opacity: submitting ? 0.6 : 1 }}>
-          {submitting ? "Creating…" : "Create (paused)"}
+          {submitting ? "Creating…" : `Create ${adSets.length > 1 ? `${adSets.length} ad sets ` : ""}(paused)`}
         </button>
         <button onClick={onDone} disabled={submitting}
           style={{ ...inputStyle, width: "auto", cursor: "pointer", fontWeight: 600 }}>Cancel</button>
@@ -180,8 +232,8 @@ function centsToCurrency(s: string | undefined, currency = "USD"): string {
 }
 
 /* Modal asking the operator to confirm going live (real spend). */
-function ActivateConfirm({ name, busy, onConfirm, onCancel }: {
-  name: string; busy: boolean; onConfirm: () => void; onCancel: () => void;
+function ActivateConfirm({ name, scope, busy, onConfirm, onCancel }: {
+  name: string; scope: "campaign" | "adset"; busy: boolean; onConfirm: () => void; onCancel: () => void;
 }) {
   return (
     <div onClick={onCancel} style={{
@@ -191,8 +243,9 @@ function ActivateConfirm({ name, busy, onConfirm, onCancel }: {
       <div onClick={(e) => e.stopPropagation()} className="card" style={{ padding: 22, maxWidth: 420, width: "100%" }}>
         <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>Activate “{name}”?</div>
         <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>
-          This sets the campaign, its ad set and ad to <b>Active</b> and starts
-          <b> real ad delivery</b>. Meta will begin spending from your account balance.
+          {scope === "campaign"
+            ? <>This sets the campaign, all its ad sets and ads to <b>Active</b> and starts <b>real ad delivery</b>. Meta will begin spending from your account balance.</>
+            : <>This sets this ad set and its ad to <b>Active</b> and starts <b>real ad delivery</b> (the campaign must also be active). Meta will begin spending from your account balance.</>}
         </div>
         <div style={{ display: "flex", gap: 8, marginTop: 18, justifyContent: "flex-end" }}>
           <button onClick={onCancel} disabled={busy}
@@ -212,17 +265,95 @@ function ActivateConfirm({ name, busy, onConfirm, onCancel }: {
   );
 }
 
+/* Small Pause (one-click) / Activate (caller confirms) button pair. */
+function StatusButton({ active, busy, onPause, onActivate }: {
+  active: boolean; busy: boolean; onPause: () => void; onActivate: () => void;
+}) {
+  return active ? (
+    <button onClick={onPause} disabled={busy}
+      style={{ background: "var(--bg-input)", border: "1px solid var(--border-subtle)",
+        color: "var(--text-primary)", borderRadius: "var(--radius-sm)", padding: "5px 10px",
+        fontSize: 12, fontWeight: 600, cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1 }}>
+      {busy ? "…" : "Pause"}
+    </button>
+  ) : (
+    <button onClick={onActivate} disabled={busy}
+      style={{ background: "var(--success)", border: "none", color: "var(--text-inverse)",
+        borderRadius: "var(--radius-sm)", padding: "5px 10px", fontSize: 12, fontWeight: 700,
+        cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1 }}>
+      {busy ? "…" : "Activate"}
+    </button>
+  );
+}
+
+/* Expanded ad-set rows under a campaign, each with its own Pause/Activate. */
+function AdSetSubRows({ campaignId, currency, onConfirmActivate }: {
+  campaignId: string; currency: string;
+  onConfirmActivate: (adset: MetaAdSet) => void;
+}) {
+  const { data, isLoading } = useMetaCampaignAdSets(campaignId, true);
+  const setAdSetStatus = useSetMetaAdSetStatus(campaignId);
+  const pendingId = setAdSetStatus.isPending ? (setAdSetStatus.variables?.id ?? null) : null;
+  const adsets = data?.data ?? [];
+
+  if (isLoading) {
+    return <tr><td colSpan={8} style={{ padding: "8px 18px", color: "var(--text-tertiary)", fontSize: 12 }}>Loading ad sets…</td></tr>;
+  }
+  if (adsets.length === 0) {
+    return <tr><td colSpan={8} style={{ padding: "8px 18px", color: "var(--text-tertiary)", fontSize: 12 }}>No ad sets.</td></tr>;
+  }
+  return (
+    <>
+      {adsets.map((a) => {
+        const active = a.status === "ACTIVE";
+        const busy = pendingId === a.id;
+        return (
+          <tr key={a.id} style={{ background: "var(--bg-subtle, rgba(127,127,127,0.04))" }}>
+            <td className="col-name" style={{ paddingLeft: 34, fontSize: 12, color: "var(--text-secondary)" }}>↳ {a.name}</td>
+            <td><StatusPill label={a.status} color={active ? "var(--success)" : "var(--text-tertiary)"} /></td>
+            <td className="col-hide-mobile" style={{ fontSize: 12 }}>{a.optimization_goal ?? "—"}</td>
+            <td className="col-hide-mobile">{centsToCurrency(a.daily_budget, currency)}</td>
+            <td colSpan={3} className="col-hide-mobile" />
+            <td>
+              <StatusButton active={active} busy={busy}
+                onPause={() => setAdSetStatus.mutate({ id: a.id, status: "PAUSED" })}
+                onActivate={() => onConfirmActivate(a)} />
+            </td>
+          </tr>
+        );
+      })}
+    </>
+  );
+}
+
+type ConfirmTarget =
+  | { scope: "campaign"; id: string; name: string }
+  | { scope: "adset"; id: string; name: string; campaignId: string };
+
 export function MetaPanel() {
   const { data: status, isLoading: statusLoading } = useMetaStatus();
   const connected = !!status?.configured;
   const [showCreate, setShowCreate] = useState(false);
-  const [confirmCampaign, setConfirmCampaign] = useState<MetaCampaign | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const { data: account } = useMetaAccount(connected);
   const { data: campaignsResp, isLoading: campaignsLoading, isError, error } = useMetaCampaigns(connected);
   const { data: insightsResp } = useMetaInsights("campaign", "last_7d", connected);
   const setStatus = useSetMetaCampaignStatus();
+  const setAdSetStatusForConfirm = useSetMetaAdSetStatus(
+    confirmTarget?.scope === "adset" ? confirmTarget.campaignId : ""
+  );
   const pendingId = setStatus.isPending ? (setStatus.variables?.id ?? null) : null;
+  const confirmBusy = setStatus.isPending || setAdSetStatusForConfirm.isPending;
+
+  function toggleExpand(id: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
 
   const currency = account?.currency ?? "USD";
   const campaigns = useMemo<MetaCampaign[]>(() => campaignsResp?.data ?? [], [campaignsResp]);
@@ -323,37 +454,36 @@ export function MetaPanel() {
                 const ins = insights[c.name];
                 const active = c.status === "ACTIVE";
                 const rowBusy = pendingId === c.id;
+                const isOpen = expanded.has(c.id);
                 return (
-                  <tr key={c.id}>
-                    <td className="col-name">{c.name}</td>
-                    <td><StatusPill label={c.status} color={active ? "var(--success)" : "var(--text-tertiary)"} /></td>
-                    <td className="col-hide-mobile" style={{ fontSize: 12 }}>{c.objective ?? "—"}</td>
-                    <td className="col-hide-mobile">{centsToCurrency(c.daily_budget, currency)}</td>
-                    <td>{ins?.spend ? `${Number(ins.spend).toFixed(2)} ${currency}` : "—"}</td>
-                    <td className="col-hide-mobile">{ins?.clicks ?? "—"}</td>
-                    <td className="col-hide-mobile">{ins?.ctr ? `${Number(ins.ctr).toFixed(2)}%` : "—"}</td>
-                    <td>
-                      {active ? (
-                        <button
-                          onClick={() => setStatus.mutate({ id: c.id, status: "PAUSED" })}
-                          disabled={rowBusy}
-                          style={{ background: "var(--bg-input)", border: "1px solid var(--border-subtle)",
-                            color: "var(--text-primary)", borderRadius: "var(--radius-sm)", padding: "5px 10px",
-                            fontSize: 12, fontWeight: 600, cursor: rowBusy ? "default" : "pointer", opacity: rowBusy ? 0.6 : 1 }}>
-                          {rowBusy ? "…" : "Pause"}
+                  <Fragment key={c.id}>
+                    <tr>
+                      <td className="col-name">
+                        <button onClick={() => toggleExpand(c.id)}
+                          style={{ background: "transparent", border: "none", color: "var(--text-tertiary)",
+                            cursor: "pointer", fontSize: 11, marginRight: 6, width: 14, display: "inline-block" }}
+                          aria-label={isOpen ? "Collapse ad sets" : "Expand ad sets"}>
+                          {isOpen ? "▾" : "▸"}
                         </button>
-                      ) : (
-                        <button
-                          onClick={() => setConfirmCampaign(c)}
-                          disabled={rowBusy}
-                          style={{ background: "var(--success)", border: "none", color: "var(--text-inverse)",
-                            borderRadius: "var(--radius-sm)", padding: "5px 10px", fontSize: 12, fontWeight: 700,
-                            cursor: rowBusy ? "default" : "pointer", opacity: rowBusy ? 0.6 : 1 }}>
-                          {rowBusy ? "…" : "Activate"}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
+                        {c.name}
+                      </td>
+                      <td><StatusPill label={c.status} color={active ? "var(--success)" : "var(--text-tertiary)"} /></td>
+                      <td className="col-hide-mobile" style={{ fontSize: 12 }}>{c.objective ?? "—"}</td>
+                      <td className="col-hide-mobile">{centsToCurrency(c.daily_budget, currency)}</td>
+                      <td>{ins?.spend ? `${Number(ins.spend).toFixed(2)} ${currency}` : "—"}</td>
+                      <td className="col-hide-mobile">{ins?.clicks ?? "—"}</td>
+                      <td className="col-hide-mobile">{ins?.ctr ? `${Number(ins.ctr).toFixed(2)}%` : "—"}</td>
+                      <td>
+                        <StatusButton active={active} busy={rowBusy}
+                          onPause={() => setStatus.mutate({ id: c.id, status: "PAUSED" })}
+                          onActivate={() => setConfirmTarget({ scope: "campaign", id: c.id, name: c.name })} />
+                      </td>
+                    </tr>
+                    {isOpen && (
+                      <AdSetSubRows campaignId={c.id} currency={currency}
+                        onConfirmActivate={(a) => setConfirmTarget({ scope: "adset", id: a.id, name: a.name, campaignId: c.id })} />
+                    )}
+                  </Fragment>
                 );
               })}
             </tbody>
@@ -361,17 +491,20 @@ export function MetaPanel() {
         )}
       </div>
 
-      {confirmCampaign && (
+      {confirmTarget && (
         <ActivateConfirm
-          name={confirmCampaign.name}
-          busy={setStatus.isPending}
-          onCancel={() => setConfirmCampaign(null)}
-          onConfirm={() =>
-            setStatus.mutate(
-              { id: confirmCampaign.id, status: "ACTIVE" },
-              { onSettled: () => setConfirmCampaign(null) }
-            )
-          }
+          name={confirmTarget.name}
+          scope={confirmTarget.scope}
+          busy={confirmBusy}
+          onCancel={() => setConfirmTarget(null)}
+          onConfirm={() => {
+            const opts = { onSettled: () => setConfirmTarget(null) };
+            if (confirmTarget.scope === "campaign") {
+              setStatus.mutate({ id: confirmTarget.id, status: "ACTIVE" }, opts);
+            } else {
+              setAdSetStatusForConfirm.mutate({ id: confirmTarget.id, status: "ACTIVE" }, opts);
+            }
+          }}
         />
       )}
     </div>

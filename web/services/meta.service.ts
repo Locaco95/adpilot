@@ -4,6 +4,7 @@ import type {
   MetaStatus,
   MetaAccount,
   MetaCampaign,
+  MetaAdSet,
   MetaInsightRow,
   MetaListResponse,
   CreateMetaCampaignRequest,
@@ -43,4 +44,19 @@ export function setMetaCampaignStatus(
   status: "ACTIVE" | "PAUSED"
 ): Promise<{ campaign_id: string; status: string; ad_sets_updated: number }> {
   return apiPost(`/meta/campaigns/${campaignId}/status`, { status });
+}
+
+/* Ad sets under one campaign (status + budget). */
+export function getMetaCampaignAdSets(
+  campaignId: string
+): Promise<MetaListResponse<MetaAdSet>> {
+  return apiGet<MetaListResponse<MetaAdSet>>(`/meta/campaigns/${campaignId}/adsets`);
+}
+
+/* Activate or pause a single ad set (+ its ads). Activating spends real money. */
+export function setMetaAdSetStatus(
+  adsetId: string,
+  status: "ACTIVE" | "PAUSED"
+): Promise<{ ad_set_id: string; status: string; ads_updated: number }> {
+  return apiPost(`/meta/adsets/${adsetId}/status`, { status });
 }

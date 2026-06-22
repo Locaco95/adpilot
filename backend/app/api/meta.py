@@ -12,7 +12,11 @@ from app.platforms.meta import get_meta_client, MetaAuthError
 from pydantic import BaseModel
 
 from app.schemas.meta_create import CreateMetaCampaignRequest, CreateMetaCampaignResult
-from app.services.meta_campaigns import create_campaign_with_adset, set_campaign_status
+from app.services.meta_campaigns import (
+    create_campaign_with_adset,
+    set_campaign_status,
+    set_adset_status,
+)
 from app.settings import get_settings
 
 router = APIRouter(prefix="/meta", tags=["meta"])
@@ -76,6 +80,15 @@ async def ads(_user=Depends(get_current_user)):
     )
 
 
+@router.get("/campaigns/{campaign_id}/adsets")
+async def campaign_adsets(campaign_id: str, _user=Depends(get_current_user)):
+    """Ad sets belonging to one campaign, with status + budget."""
+    return await _call(
+        f"/{campaign_id}/adsets",
+        params={"fields": "name,status,effective_status,daily_budget,optimization_goal", "limit": 100},
+    )
+
+
 @router.get("/insights")
 async def insights(
     level: str = Query("campaign", description="account | campaign | adset | ad"),
@@ -130,6 +143,25 @@ async def campaign_status(
     """
     try:
         return await set_campaign_status(campaign_id, body.status)
+    except MetaAuthError as e:
+        raise HTTPException(503, f"Meta auth error: {e}")
+    except HTTPStatusError as e:
+        raise HTTPException(
+            status_code=e.response.status_code,
+            detail=f"Meta API error: {e.response.text[:400]}",
+        )
+
+
+@router.post("/adsets/{adset_id}/status")
+async def adset_status(
+    adset_id: str,
+    body: SetStatusRequest,
+    _user=Depends(get_current_user),
+):
+    """Activate or pause a single ad set (and its ads), leaving the rest of the
+    campaign untouched. Activating starts real spend; the frontend confirms it."""
+    try:
+        return await set_adset_status(adset_id, body.status)
     except MetaAuthError as e:
         raise HTTPException(503, f"Meta auth error: {e}")
     except HTTPStatusError as e:

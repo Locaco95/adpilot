@@ -31,6 +31,15 @@ export interface MetaCampaign {
   created_time?: string;
 }
 
+export interface MetaAdSet {
+  id: string;
+  name: string;
+  status: string;
+  effective_status?: string;
+  daily_budget?: string;
+  optimization_goal?: string;
+}
+
 export interface MetaInsightRow {
   campaign_name?: string;
   spend?: string;
@@ -53,9 +62,7 @@ export type MetaObjective =
   | "OUTCOME_ENGAGEMENT"
   | "OUTCOME_LEADS";
 
-export interface CreateMetaCampaignRequest {
-  name: string;
-  objective: MetaObjective;
+export interface AdSetSpec {
   country_code: string;
   daily_budget: number;
   age_min: number;
@@ -68,10 +75,25 @@ export interface CreateMetaCampaignRequest {
   call_to_action?: string;
 }
 
-export interface CreateMetaCampaignResult {
-  campaign_id: string;
+export interface CreateMetaCampaignRequest {
+  name: string;
+  objective: MetaObjective;
+  ad_sets: AdSetSpec[];
+}
+
+export interface CreatedAdSet {
   ad_set_id: string;
+  country_code: string;
   creative_id?: string | null;
   ad_id?: string | null;
+}
+
+export interface CreateMetaCampaignResult {
+  campaign_id: string;
   status: string;
+  ad_sets: CreatedAdSet[];
+  // Back-compat: first ad set's ids
+  ad_set_id?: string | null;
+  creative_id?: string | null;
+  ad_id?: string | null;
 }

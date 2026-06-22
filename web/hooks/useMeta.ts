@@ -3,8 +3,10 @@ import {
   getMetaStatus,
   getMetaAccount,
   getMetaCampaigns,
+  getMetaCampaignAdSets,
   getMetaInsights,
   setMetaCampaignStatus,
+  setMetaAdSetStatus,
 } from "@/services/meta.service";
 
 export const metaKeys = {
@@ -14,6 +16,7 @@ export const metaKeys = {
   campaigns: () => ["meta", "campaigns"] as const,
   insights: (level: string, preset: string) =>
     ["meta", "insights", level, preset] as const,
+  adsets: (campaignId: string) => ["meta", "adsets", campaignId] as const,
 };
 
 export function useMetaStatus() {
@@ -65,6 +68,29 @@ export function useSetMetaCampaignStatus() {
     mutationFn: ({ id, status }: { id: string; status: "ACTIVE" | "PAUSED" }) =>
       setMetaCampaignStatus(id, status),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: metaKeys.campaigns() });
+      qc.invalidateQueries({ queryKey: metaKeys.all });
+    },
+  });
+}
+
+export function useMetaCampaignAdSets(campaignId: string, enabled = true) {
+  return useQuery({
+    queryKey: metaKeys.adsets(campaignId),
+    queryFn: () => getMetaCampaignAdSets(campaignId),
+    staleTime: 30_000,
+    enabled,
+    retry: false,
+  });
+}
+
+export function useSetMetaAdSetStatus(campaignId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: "ACTIVE" | "PAUSED" }) =>
+      setMetaAdSetStatus(id, status),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: metaKeys.adsets(campaignId) });
       qc.invalidateQueries({ queryKey: metaKeys.campaigns() });
     },
   });
