@@ -35,13 +35,14 @@ const labelStyle: React.CSSProperties = { fontSize: 11, color: "var(--text-terti
 interface AdSetDraft {
   country: string;
   budget: string;
+  endDate: string; // yyyy-mm-dd (local); "" = no end, runs until paused
   creativeFileId: string | null;
   destinationUrl: string;
   headline: string;
 }
 
 function emptyAdSet(): AdSetDraft {
-  return { country: "SA", budget: "100", creativeFileId: null, destinationUrl: "", headline: "" };
+  return { country: "SA", budget: "100", endDate: "", creativeFileId: null, destinationUrl: "", headline: "" };
 }
 
 function AdSetCard({ index, total, draft, onChange, onRemove, currency, showBudget }: {
@@ -73,6 +74,10 @@ function AdSetCard({ index, total, draft, onChange, onRemove, currency, showBudg
             <input style={inputStyle} type="number" value={draft.budget} onChange={(e) => set({ budget: e.target.value })} />
           </div>
         )}
+        <div style={{ gridColumn: "1 / -1" }}>
+          <label style={labelStyle}>End date (optional — auto-stops; leave empty to run until paused)</label>
+          <input style={inputStyle} type="date" value={draft.endDate} onChange={(e) => set({ endDate: e.target.value })} />
+        </div>
         <div style={{ gridColumn: "1 / -1" }}>
           <label style={labelStyle}>Creative — from Google Drive (optional)</label>
           <CreativePicker selectedFileId={draft.creativeFileId} onSelect={(id) => set({ creativeFileId: id })} />
@@ -140,6 +145,7 @@ function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone
           ...(cbo ? {} : { daily_budget: Number(a.budget) }),
           age_min: 18,
           age_max: 65,
+          ...(a.endDate ? { end_time: new Date(`${a.endDate}T23:59:59`).toISOString() } : {}),
           ...(a.creativeFileId ? {
             creative_file_id: a.creativeFileId,
             destination_url: a.destinationUrl.trim(),

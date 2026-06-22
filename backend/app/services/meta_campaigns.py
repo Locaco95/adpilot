@@ -55,6 +55,12 @@ async def _create_ad_set(
     if spec.daily_budget is not None:
         ad_set_data["daily_budget"] = str(int(round(spec.daily_budget * 100)))
 
+    # Optional schedule. end_time makes the ad set auto-stop (e.g. run 3 days).
+    if spec.start_time:
+        ad_set_data["start_time"] = spec.start_time
+    if spec.end_time:
+        ad_set_data["end_time"] = spec.end_time
+
     # Sales objective requires a promoted_object: which pixel + which conversion
     # event Meta optimizes toward. Without it Meta rejects the ad set
     # ("select a promoted object", subcode 1815430).

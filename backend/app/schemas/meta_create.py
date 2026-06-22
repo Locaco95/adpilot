@@ -40,6 +40,11 @@ class AdSetSpec(BaseModel):
     age_min: int = Field(18, ge=13, le=65)
     age_max: int = Field(65, ge=13, le=65)
 
+    # Schedule (optional). ISO-8601 strings passed straight to Meta. start_time
+    # omitted => starts when activated; end_time omitted => runs until paused.
+    start_time: str | None = Field(None, description="ISO-8601 start, e.g. 2026-06-25T09:00:00+0000")
+    end_time: str | None = Field(None, description="ISO-8601 end; the ad set auto-stops at this time.")
+
     # Creative/ad layer (optional, per ad set). When creative_file_id is set, the
     # media is fetched via services.media_service and a PAUSED ad creative + ad are built.
     creative_file_id: str | None = Field(None, description="Google Drive file id (OAuth) for the creative.")

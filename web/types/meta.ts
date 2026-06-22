@@ -67,6 +67,8 @@ export interface AdSetSpec {
   daily_budget?: number; // omit in CBO (campaign holds the budget)
   age_min: number;
   age_max: number;
+  start_time?: string; // ISO-8601; omit => starts when activated
+  end_time?: string;   // ISO-8601; omit => runs until paused
   // Optional creative/ad layer (media via Google Drive OAuth)
   creative_file_id?: string;
   destination_url?: string;
