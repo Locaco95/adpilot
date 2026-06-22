@@ -35,7 +35,6 @@ async def _create_ad_set(
     """Create one PAUSED ad set under the campaign, plus its ad/creative if a
     creative_file_id is supplied."""
     s = get_settings()
-    daily_budget_minor = int(round(spec.daily_budget * 100))
     optimization_goal = OBJECTIVE_OPTIMIZATION.get(objective, "LINK_CLICKS")
     targeting = json.dumps({
         "geo_locations": {"countries": [spec.country_code.upper()]},
@@ -46,12 +45,15 @@ async def _create_ad_set(
         "name": f"{campaign_name} ad set {index} ({spec.country_code.upper()})",
         "campaign_id": campaign_id,
         "status": "PAUSED",
-        "daily_budget": str(daily_budget_minor),
         "billing_event": "IMPRESSIONS",
         "optimization_goal": optimization_goal,
         "bid_strategy": "LOWEST_COST_WITHOUT_CAP",
         "targeting": targeting,
     }
+    # ABO: budget on the ad set. CBO (spec.daily_budget is None): omit — the
+    # campaign holds the budget and Meta splits it across ad sets.
+    if spec.daily_budget is not None:
+        ad_set_data["daily_budget"] = str(int(round(spec.daily_budget * 100)))
 
     # Sales objective requires a promoted_object: which pixel + which conversion
     # event Meta optimizes toward. Without it Meta rejects the ad set
@@ -138,18 +140,20 @@ async def create_campaign_with_adset(
 
     client = get_meta_client()
 
-    # 1. Campaign (PAUSED). is_adset_budget_sharing_enabled is required by Meta
-    #    when budget lives on the ad set (ABO), not the campaign.
-    campaign = await client.post(
-        f"/{acct}/campaigns",
-        data={
-            "name": body.name,
-            "objective": body.objective.value,
-            "status": "PAUSED",
-            "special_ad_categories": "[]",
-            "is_adset_budget_sharing_enabled": "false",
-        },
-    )
+    # 1. Campaign (PAUSED). Budget model:
+    #    - CBO (body.campaign_daily_budget set): daily_budget lives on the campaign;
+    #      Meta splits it across ad sets (ad sets carry no budget).
+    #    - ABO (None): budget lives on each ad set; campaign has none.
+    campaign_data = {
+        "name": body.name,
+        "objective": body.objective.value,
+        "status": "PAUSED",
+        "special_ad_categories": "[]",
+        "is_adset_budget_sharing_enabled": "false",
+    }
+    if body.campaign_daily_budget is not None:
+        campaign_data["daily_budget"] = str(int(round(body.campaign_daily_budget * 100)))
+    campaign = await client.post(f"/{acct}/campaigns", data=campaign_data)
     campaign_id = campaign["id"]
 
     # 2. Every ad set under it (each PAUSED, with its own ad when given a creative).

@@ -36,7 +36,7 @@ class AdSetSpec(BaseModel):
     test regions/audiences side by side (ABO: each ad set owns its budget).
     """
     country_code: str = Field(..., min_length=2, max_length=2, description="ISO-2, e.g. 'SA'")
-    daily_budget: float = Field(..., gt=0, description="In the ad account's currency (Meta enforces a per-account minimum)")
+    daily_budget: float | None = Field(None, gt=0, description="Per-ad-set budget (ABO). Omit when the campaign holds the budget (CBO).")
     age_min: int = Field(18, ge=13, le=65)
     age_max: int = Field(65, ge=13, le=65)
 
@@ -59,6 +59,11 @@ class CreateMetaCampaignRequest(BaseModel):
     name: str = Field(..., max_length=400)
     objective: MetaObjective = MetaObjective.OUTCOME_TRAFFIC
 
+    # Budget model. When campaign_daily_budget is set => CBO: the budget lives on
+    # the campaign and Meta splits it across ad sets (ad sets carry no budget).
+    # When it's None => ABO: each ad set carries its own daily_budget.
+    campaign_daily_budget: float | None = Field(None, gt=0, description="Whole-campaign daily budget (CBO). Omit for per-ad-set budgets (ABO).")
+
     # New: one or more ad sets under this campaign. Back-compat: if ad_sets is
     # omitted, the flat fields below are wrapped into a single ad set.
     ad_sets: list[AdSetSpec] = Field(default_factory=list, description="Ad sets to create under the campaign.")
@@ -76,13 +81,20 @@ class CreateMetaCampaignRequest(BaseModel):
 
     @model_validator(mode="after")
     def _normalize_ad_sets(self) -> "CreateMetaCampaignRequest":
-        """Fold legacy flat fields into ad_sets so the service only sees a list."""
+        """Fold legacy flat fields into ad_sets, then enforce the budget model.
+
+        CBO (campaign_daily_budget set): ad sets must NOT carry a budget.
+        ABO (campaign_daily_budget None): every ad set MUST carry a budget.
+        """
+        cbo = self.campaign_daily_budget is not None
         if not self.ad_sets:
-            if not (self.country_code and self.daily_budget):
-                raise ValueError("Provide ad_sets, or the legacy country_code + daily_budget.")
+            if not self.country_code:
+                raise ValueError("Provide ad_sets, or the legacy country_code.")
+            if not cbo and not self.daily_budget:
+                raise ValueError("Provide a per-ad-set daily_budget, or a campaign_daily_budget (CBO).")
             self.ad_sets = [AdSetSpec(
                 country_code=self.country_code,
-                daily_budget=self.daily_budget,
+                daily_budget=None if cbo else self.daily_budget,
                 age_min=self.age_min,
                 age_max=self.age_max,
                 creative_file_id=self.creative_file_id,
@@ -91,6 +103,12 @@ class CreateMetaCampaignRequest(BaseModel):
                 message=self.message,
                 call_to_action=self.call_to_action,
             )]
+
+        for i, a in enumerate(self.ad_sets, start=1):
+            if cbo and a.daily_budget is not None:
+                raise ValueError(f"Ad set {i}: drop the budget — the campaign holds it (CBO).")
+            if not cbo and a.daily_budget is None:
+                raise ValueError(f"Ad set {i}: a daily_budget is required (ABO).")
         return self
 
 

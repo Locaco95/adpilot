@@ -44,9 +44,9 @@ function emptyAdSet(): AdSetDraft {
   return { country: "SA", budget: "100", creativeFileId: null, destinationUrl: "", headline: "" };
 }
 
-function AdSetCard({ index, total, draft, onChange, onRemove, currency }: {
+function AdSetCard({ index, total, draft, onChange, onRemove, currency, showBudget }: {
   index: number; total: number; draft: AdSetDraft;
-  onChange: (d: AdSetDraft) => void; onRemove: () => void; currency: string;
+  onChange: (d: AdSetDraft) => void; onRemove: () => void; currency: string; showBudget: boolean;
 }) {
   const set = (patch: Partial<AdSetDraft>) => onChange({ ...draft, ...patch });
   return (
@@ -61,16 +61,18 @@ function AdSetCard({ index, total, draft, onChange, onRemove, currency }: {
         )}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <div>
+        <div style={showBudget ? undefined : { gridColumn: "1 / -1" }}>
           <label style={labelStyle}>Region</label>
           <select style={inputStyle} value={draft.country} onChange={(e) => set({ country: e.target.value })}>
             {REGIONS.map((r) => <option key={r.code} value={r.code}>{r.label}</option>)}
           </select>
         </div>
-        <div>
-          <label style={labelStyle}>Daily budget ({currency})</label>
-          <input style={inputStyle} type="number" value={draft.budget} onChange={(e) => set({ budget: e.target.value })} />
-        </div>
+        {showBudget && (
+          <div>
+            <label style={labelStyle}>Daily budget ({currency})</label>
+            <input style={inputStyle} type="number" value={draft.budget} onChange={(e) => set({ budget: e.target.value })} />
+          </div>
+        )}
         <div style={{ gridColumn: "1 / -1" }}>
           <label style={labelStyle}>Creative — from Google Drive (optional)</label>
           <CreativePicker selectedFileId={draft.creativeFileId} onSelect={(id) => set({ creativeFileId: id })} />
@@ -97,6 +99,8 @@ function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [objective, setObjective] = useState<MetaObjective>("OUTCOME_TRAFFIC");
+  const [budgetLevel, setBudgetLevel] = useState<"abo" | "cbo">("abo");
+  const [campaignBudget, setCampaignBudget] = useState("200");
   const [adSets, setAdSets] = useState<AdSetDraft[]>([emptyAdSet()]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -112,10 +116,17 @@ function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone
   async function submit() {
     setError(null);
     if (!name.trim()) { setError("Campaign name is required."); return; }
+    const cbo = budgetLevel === "cbo";
+    if (cbo) {
+      const cb = Number(campaignBudget);
+      if (!cb || cb <= 0) { setError("Enter the campaign daily budget."); return; }
+    }
     for (let i = 0; i < adSets.length; i++) {
       const a = adSets[i];
-      const b = Number(a.budget);
-      if (!b || b <= 0) { setError(`Ad set ${i + 1}: enter a daily budget.`); return; }
+      if (!cbo) {
+        const b = Number(a.budget);
+        if (!b || b <= 0) { setError(`Ad set ${i + 1}: enter a daily budget.`); return; }
+      }
       if (a.creativeFileId && !a.destinationUrl.trim()) { setError(`Ad set ${i + 1}: add a destination URL for the creative.`); return; }
     }
     setSubmitting(true);
@@ -123,9 +134,10 @@ function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone
       const res = await createMetaCampaign({
         name: name.trim(),
         objective,
+        ...(cbo ? { campaign_daily_budget: Number(campaignBudget) } : {}),
         ad_sets: adSets.map((a) => ({
           country_code: a.country,
-          daily_budget: Number(a.budget),
+          ...(cbo ? {} : { daily_budget: Number(a.budget) }),
           age_min: 18,
           age_max: 65,
           ...(a.creativeFileId ? {
@@ -180,11 +192,40 @@ function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone
             {OBJECTIVES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
+        <div style={{ gridColumn: "1 / -1" }}>
+          <label style={labelStyle}>Budget level</label>
+          <div style={{ display: "flex", gap: 8 }}>
+            {([
+              { key: "abo", label: "Per ad set", hint: "you set each" },
+              { key: "cbo", label: "Whole campaign", hint: "Meta splits it" },
+            ] as const).map((opt) => {
+              const on = budgetLevel === opt.key;
+              return (
+                <button key={opt.key} onClick={() => setBudgetLevel(opt.key)}
+                  style={{ flex: 1, textAlign: "left", padding: "8px 10px", cursor: "pointer",
+                    borderRadius: "var(--radius-sm)", fontSize: 13, fontWeight: 600,
+                    background: on ? "var(--accent)" : "var(--bg-input)",
+                    color: on ? "var(--text-inverse)" : "var(--text-primary)",
+                    border: `1px solid ${on ? "var(--accent)" : "var(--border-subtle)"}` }}>
+                  {opt.label}
+                  <span style={{ display: "block", fontSize: 11, fontWeight: 400, opacity: 0.8 }}>{opt.hint}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        {budgetLevel === "cbo" && (
+          <div style={{ gridColumn: "1 / -1" }}>
+            <label style={labelStyle}>Campaign daily budget ({currency}) — shared across all ad sets</label>
+            <input style={inputStyle} type="number" value={campaignBudget} onChange={(e) => setCampaignBudget(e.target.value)} />
+          </div>
+        )}
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 14 }}>
         {adSets.map((a, i) => (
           <AdSetCard key={i} index={i} total={adSets.length} draft={a} currency={currency}
+            showBudget={budgetLevel === "abo"}
             onChange={(d) => updateAdSet(i, d)} onRemove={() => removeAdSet(i)} />
         ))}
       </div>

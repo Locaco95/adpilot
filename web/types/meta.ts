@@ -64,7 +64,7 @@ export type MetaObjective =
 
 export interface AdSetSpec {
   country_code: string;
-  daily_budget: number;
+  daily_budget?: number; // omit in CBO (campaign holds the budget)
   age_min: number;
   age_max: number;
   // Optional creative/ad layer (media via Google Drive OAuth)
@@ -78,6 +78,7 @@ export interface AdSetSpec {
 export interface CreateMetaCampaignRequest {
   name: string;
   objective: MetaObjective;
+  campaign_daily_budget?: number; // set => CBO (Meta splits across ad sets)
   ad_sets: AdSetSpec[];
 }
 
