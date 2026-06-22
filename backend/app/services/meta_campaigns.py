@@ -21,6 +21,7 @@ from app.schemas.meta_create import (
     CreatedAdSet,
     CreateMetaCampaignRequest,
     CreateMetaCampaignResult,
+    MetaObjective,
     OBJECTIVE_OPTIMIZATION,
 )
 from app.services.media_service import get_creative_media, MediaType
@@ -33,6 +34,7 @@ async def _create_ad_set(
 ) -> CreatedAdSet:
     """Create one PAUSED ad set under the campaign, plus its ad/creative if a
     creative_file_id is supplied."""
+    s = get_settings()
     daily_budget_minor = int(round(spec.daily_budget * 100))
     optimization_goal = OBJECTIVE_OPTIMIZATION.get(objective, "LINK_CLICKS")
     targeting = json.dumps({
@@ -40,25 +42,34 @@ async def _create_ad_set(
         "age_min": spec.age_min,
         "age_max": spec.age_max,
     })
-    ad_set = await client.post(
-        f"/{acct}/adsets",
-        data={
-            "name": f"{campaign_name} ad set {index} ({spec.country_code.upper()})",
-            "campaign_id": campaign_id,
-            "status": "PAUSED",
-            "daily_budget": str(daily_budget_minor),
-            "billing_event": "IMPRESSIONS",
-            "optimization_goal": optimization_goal,
-            "bid_strategy": "LOWEST_COST_WITHOUT_CAP",
-            "targeting": targeting,
-        },
-    )
+    ad_set_data = {
+        "name": f"{campaign_name} ad set {index} ({spec.country_code.upper()})",
+        "campaign_id": campaign_id,
+        "status": "PAUSED",
+        "daily_budget": str(daily_budget_minor),
+        "billing_event": "IMPRESSIONS",
+        "optimization_goal": optimization_goal,
+        "bid_strategy": "LOWEST_COST_WITHOUT_CAP",
+        "targeting": targeting,
+    }
+
+    # Sales objective requires a promoted_object: which pixel + which conversion
+    # event Meta optimizes toward. Without it Meta rejects the ad set
+    # ("select a promoted object", subcode 1815430).
+    if objective == MetaObjective.OUTCOME_SALES:
+        if not s.meta_pixel_id:
+            raise HTTPException(503, "META_PIXEL_ID not configured — required for the Sales objective.")
+        ad_set_data["promoted_object"] = json.dumps({
+            "pixel_id": s.meta_pixel_id,
+            "custom_event_type": "PURCHASE",
+        })
+
+    ad_set = await client.post(f"/{acct}/adsets", data=ad_set_data)
     ad_set_id = ad_set["id"]
 
     if not spec.creative_file_id:
         return CreatedAdSet(ad_set_id=ad_set_id, country_code=spec.country_code.upper())
 
-    s = get_settings()
     page_id = s.meta_page_id
     if not page_id:
         raise HTTPException(503, "META_PAGE_ID not configured — required to create ad creatives.")

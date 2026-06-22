@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     meta_access_token: str = ""
     meta_ad_account_id: str = ""
     meta_page_id: str = ""  # Facebook Page that ad creatives post from (required for the ad/creative layer)
+    meta_pixel_id: str = ""  # Meta Pixel for conversion tracking (required for Sales objective)
 
     # TikTok
     tiktok_access_token: str = ""
