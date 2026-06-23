@@ -8,6 +8,7 @@ Reference: https://developers.facebook.com/docs/marketing-api
 """
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 import httpx
@@ -101,14 +102,25 @@ class MetaClient:
             raise MetaAuthError(f"Meta returned no video id: {resp}")
         return vid
 
-    async def get_video_thumbnail(self, video_id: str) -> str | None:
-        """Best-effort: return a thumbnail URL for an uploaded video, if available."""
-        try:
-            data = await self.get(f"/{video_id}", params={"fields": "thumbnails"})
-            thumbs = (data.get("thumbnails") or {}).get("data") or []
-            return thumbs[0]["uri"] if thumbs else None
-        except Exception:
-            return None
+    async def get_video_thumbnail(self, video_id: str, retries: int = 12, delay: float = 2.0) -> str | None:
+        """Return a thumbnail URL for an uploaded video.
+
+        Meta generates thumbnails asynchronously after upload, so right after
+        uploading there's usually none yet. A video ad creative REQUIRES a
+        thumbnail (image_url), so poll until one appears (up to retries*delay s).
+        Prefer the one Meta flags as default.
+        """
+        for _ in range(retries):
+            try:
+                data = await self.get(f"/{video_id}", params={"fields": "thumbnails"})
+                thumbs = (data.get("thumbnails") or {}).get("data") or []
+                if thumbs:
+                    preferred = next((t for t in thumbs if t.get("is_preferred")), thumbs[0])
+                    return preferred["uri"]
+            except Exception:
+                pass
+            await asyncio.sleep(delay)
+        return None
 
 
 _singleton: MetaClient | None = None
