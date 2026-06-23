@@ -8,6 +8,9 @@ import type {
   MetaInterest,
   MetaInsightRow,
   MetaListResponse,
+  MetaObjective,
+  AdSetSpec,
+  CreatedAdSet,
   CreateMetaCampaignRequest,
   CreateMetaCampaignResult,
 } from "@/types/meta";
@@ -39,6 +42,28 @@ export function createMetaCampaign(
   // Video creatives are downloaded from Drive + uploaded to Meta server-side,
   // which can take well over the default 15s — allow up to 5 minutes.
   return apiPost<CreateMetaCampaignResult>("/meta/campaigns/create", payload, 300_000);
+}
+
+/* Split create — campaign shell first, then one ad set per request. Each ad-set
+   request carries at most one video upload, avoiding the multi-video 502. */
+export function createMetaCampaignShell(
+  body: { name: string; objective: MetaObjective; campaign_daily_budget?: number }
+): Promise<{ campaign_id: string; status: string }> {
+  return apiPost("/meta/campaigns", body);
+}
+
+export function createMetaAdSet(
+  campaignId: string,
+  spec: AdSetSpec,
+  meta: { index: number; name: string; objective: MetaObjective }
+): Promise<CreatedAdSet> {
+  const q = new URLSearchParams({
+    index: String(meta.index),
+    name: meta.name,
+    objective: meta.objective,
+  });
+  // One video upload per request — allow up to 4 minutes each.
+  return apiPost(`/meta/campaigns/${campaignId}/adsets/create?${q}`, spec, 240_000);
 }
 
 /* Activate or pause a campaign + all its ad sets + ads. Activating spends real money. */

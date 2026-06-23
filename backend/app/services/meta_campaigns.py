@@ -166,36 +166,63 @@ async def _create_ad_set(
     )
 
 
-async def create_campaign_with_adset(
-    body: CreateMetaCampaignRequest, db: AsyncSession
-) -> CreateMetaCampaignResult:
-    s = get_settings()
-    acct = s.meta_ad_account_id
+def _require_acct() -> str:
+    acct = get_settings().meta_ad_account_id
     if not acct:
         raise HTTPException(503, "META_AD_ACCOUNT_ID not configured.")
+    return acct
 
+
+async def create_campaign_only(
+    name: str, objective: MetaObjective, campaign_daily_budget: float | None
+) -> str:
+    """Create just the PAUSED campaign (fast, no creative uploads); return its id.
+
+    Budget model: CBO (campaign_daily_budget set) puts the budget + bid strategy
+    on the campaign; ABO leaves them to the ad sets.
+    """
+    acct = _require_acct()
     client = get_meta_client()
-
-    # 1. Campaign (PAUSED). Budget model:
-    #    - CBO (body.campaign_daily_budget set): daily_budget lives on the campaign;
-    #      Meta splits it across ad sets (ad sets carry no budget).
-    #    - ABO (None): budget lives on each ad set; campaign has none.
     campaign_data = {
-        "name": body.name,
-        "objective": body.objective.value,
+        "name": name,
+        "objective": objective.value,
         "status": "PAUSED",
         "special_ad_categories": "[]",
         "is_adset_budget_sharing_enabled": "false",
     }
-    if body.campaign_daily_budget is not None:
-        campaign_data["daily_budget"] = str(int(round(body.campaign_daily_budget * 100)))
-        # CBO: bid strategy lives on the campaign (ad sets have no budget).
+    if campaign_daily_budget is not None:
+        campaign_data["daily_budget"] = str(int(round(campaign_daily_budget * 100)))
         campaign_data["bid_strategy"] = "LOWEST_COST_WITHOUT_CAP"
     campaign = await client.post(f"/{acct}/campaigns", data=campaign_data)
-    campaign_id = campaign["id"]
+    return campaign["id"]
 
-    # 2. Every ad set under it (each PAUSED, with its own ad when given a creative).
-    #    body.ad_sets is always populated (validator folds legacy fields in).
+
+async def add_ad_set_to_campaign(
+    campaign_id: str, campaign_name: str, objective: MetaObjective,
+    spec: AdSetSpec, index: int, db: AsyncSession,
+) -> CreatedAdSet:
+    """Create ONE ad set (+ its ad/creative) under an existing campaign.
+
+    This is the per-ad-set entrypoint: the frontend creates the campaign once,
+    then calls this per ad set in separate requests — so a 60MB video upload
+    lives in its own short request instead of one giant multi-video request that
+    blows the gateway timeout (502)."""
+    acct = _require_acct()
+    client = get_meta_client()
+    return await _create_ad_set(client, acct, campaign_id, campaign_name, objective, spec, index, db, {})
+
+
+async def create_campaign_with_adset(
+    body: CreateMetaCampaignRequest, db: AsyncSession
+) -> CreateMetaCampaignResult:
+    """All-in-one create (campaign + all ad sets in one request). Kept for the
+    Telegram agent and single/light campaigns; the web app uses the split
+    per-ad-set flow for multi-video reliability."""
+    acct = _require_acct()
+    client = get_meta_client()
+
+    campaign_id = await create_campaign_only(body.name, body.objective, body.campaign_daily_budget)
+
     created: list[CreatedAdSet] = []
     media_cache: dict = {}  # upload each unique creative to Meta only once
     for i, spec in enumerate(body.ad_sets, start=1):

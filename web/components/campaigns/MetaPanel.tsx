@@ -2,9 +2,9 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMetaStatus, useMetaAccount, useMetaCampaigns, useMetaInsights, useSetMetaCampaignStatus, useMetaCampaignAdSets, useSetMetaAdSetStatus, useDeleteMetaCampaign, metaKeys } from "@/hooks/useMeta";
-import { createMetaCampaign, searchMetaInterests } from "@/services/meta.service";
+import { createMetaCampaignShell, createMetaAdSet, searchMetaInterests } from "@/services/meta.service";
 import { CreativePicker } from "@/components/common/CreativePicker";
-import type { MetaCampaign, MetaAdSet, MetaInterest, MetaInsightRow, MetaObjective, CreateMetaCampaignResult } from "@/types/meta";
+import type { MetaCampaign, MetaAdSet, MetaInterest, MetaInsightRow, MetaObjective, CreateMetaCampaignResult, AdSetSpec, CreatedAdSet } from "@/types/meta";
 
 const REGIONS: { code: string; label: string }[] = [
   { code: "SA", label: "Saudi Arabia" },
@@ -221,7 +221,9 @@ function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone
   const [campaignBudget, setCampaignBudget] = useState("200");
   const [adSets, setAdSets] = useState<AdSetDraft[]>([emptyAdSet()]);
   const [submitting, setSubmitting] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [adSetErrors, setAdSetErrors] = useState<string[]>([]);
   const [result, setResult] = useState<CreateMetaCampaignResult | null>(null);
 
   function updateAdSet(i: number, d: AdSetDraft) {
@@ -248,12 +250,24 @@ function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone
       if (a.creativeFileId && !a.destinationUrl.trim()) { setError(`Ad set ${i + 1}: add a destination URL for the creative.`); return; }
     }
     setSubmitting(true);
+    setAdSetErrors([]);
+    const errs: string[] = [];
+    const made: CreatedAdSet[] = [];
     try {
-      const res = await createMetaCampaign({
+      // 1. Campaign shell first (fast).
+      setProgress("Creating campaign…");
+      const shell = await createMetaCampaignShell({
         name: name.trim(),
         objective,
         ...(cbo ? { campaign_daily_budget: Number(campaignBudget) } : {}),
-        ad_sets: adSets.map((a) => ({
+      });
+
+      // 2. One ad set per request — each carries at most one video upload, so a
+      //    big multi-video campaign never lives in one giant request (502).
+      for (let i = 0; i < adSets.length; i++) {
+        const a = adSets[i];
+        setProgress(`Creating ad set ${i + 1} of ${adSets.length}${a.creativeFileId ? " (uploading creative…)" : ""}`);
+        const spec: AdSetSpec = {
           country_code: a.country,
           ...(cbo ? {} : { daily_budget: Number(a.budget) }),
           age_min: Number(a.ageMin) || 18,
@@ -267,13 +281,25 @@ function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone
             destination_url: a.destinationUrl.trim(),
             headline: a.headline.trim() || undefined,
           } : {}),
-        })),
-      });
-      setResult(res);
+        };
+        try {
+          made.push(await createMetaAdSet(shell.campaign_id, spec, { index: i + 1, name: name.trim(), objective }));
+        } catch (e) {
+          errs.push(`Ad set ${i + 1}: ${(e as Error)?.message ?? "failed"}`);
+        }
+      }
+
+      setAdSetErrors(errs);
       qc.invalidateQueries({ queryKey: metaKeys.campaigns() });
+      if (made.length === 0) {
+        setError(`Campaign created but every ad set failed.\n${errs.join("\n")}`);
+      } else {
+        setResult({ campaign_id: shell.campaign_id, status: "PAUSED", ad_sets: made });
+      }
     } catch (e) {
       setError((e as Error)?.message ?? "Failed to create campaign");
     } finally {
+      setProgress(null);
       setSubmitting(false);
     }
   }
@@ -292,6 +318,12 @@ function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone
             </div>
           ))}
         </div>
+        {adSetErrors.length > 0 && (
+          <div style={{ fontSize: 12, color: "var(--warning)", marginTop: 10, lineHeight: 1.6 }}>
+            Some ad sets failed (the rest were created):
+            {adSetErrors.map((m, i) => <div key={i}>• {m}</div>)}
+          </div>
+        )}
         <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 8 }}>
           Created paused — hit Activate on the campaign row below to go live (spends real money).
         </div>
@@ -358,7 +390,8 @@ function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone
         + Add ad set
       </button>
 
-      {error && <div style={{ color: "var(--danger)", fontSize: 12, marginTop: 10 }}>{error}</div>}
+      {error && <div style={{ color: "var(--danger)", fontSize: 12, marginTop: 10, whiteSpace: "pre-wrap" }}>{error}</div>}
+      {progress && <div style={{ color: "var(--text-secondary)", fontSize: 12, marginTop: 10 }}>⏳ {progress}</div>}
 
       <div style={{ display: "flex", gap: 8, marginTop: 14, alignItems: "center" }}>
         <button onClick={submit} disabled={submitting}

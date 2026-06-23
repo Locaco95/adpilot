@@ -11,9 +11,17 @@ from app.deps import get_current_user, get_db
 from app.platforms.meta import get_meta_client, MetaAuthError
 from pydantic import BaseModel
 
-from app.schemas.meta_create import CreateMetaCampaignRequest, CreateMetaCampaignResult
+from app.schemas.meta_create import (
+    CreateMetaCampaignRequest,
+    CreateMetaCampaignResult,
+    AdSetSpec,
+    CreatedAdSet,
+    MetaObjective,
+)
 from app.services.meta_campaigns import (
     create_campaign_with_adset,
+    create_campaign_only,
+    add_ad_set_to_campaign,
     set_campaign_status,
     set_adset_status,
     delete_campaign,
@@ -141,6 +149,48 @@ async def create_campaign(
             status_code=e.response.status_code,
             detail=f"Meta API error: {e.response.text[:400]}",
         )
+
+
+class CreateCampaignShellRequest(BaseModel):
+    name: str
+    objective: MetaObjective = MetaObjective.OUTCOME_TRAFFIC
+    campaign_daily_budget: float | None = None
+
+
+@router.post("/campaigns")
+async def create_campaign_shell(
+    body: CreateCampaignShellRequest,
+    _user=Depends(get_current_user),
+):
+    """Create JUST the PAUSED campaign (fast, no uploads). The web app calls this
+    first, then adds ad sets one at a time so big-video uploads each get their
+    own short request (avoids the multi-video 502)."""
+    try:
+        campaign_id = await create_campaign_only(body.name, body.objective, body.campaign_daily_budget)
+        return {"campaign_id": campaign_id, "status": "PAUSED"}
+    except MetaAuthError as e:
+        raise HTTPException(503, f"Meta auth error: {e}")
+    except HTTPStatusError as e:
+        raise HTTPException(e.response.status_code, f"Meta API error: {e.response.text[:400]}")
+
+
+@router.post("/campaigns/{campaign_id}/adsets/create", response_model=CreatedAdSet)
+async def create_one_ad_set(
+    campaign_id: str,
+    spec: AdSetSpec,
+    index: int = Query(1, description="1-based position, for naming"),
+    name: str = Query("Campaign", description="Campaign name, for ad-set naming"),
+    objective: MetaObjective = Query(MetaObjective.OUTCOME_TRAFFIC),
+    db: AsyncSession = Depends(get_db),
+    _user=Depends(get_current_user),
+):
+    """Create ONE ad set (+ its ad/creative) under an existing campaign."""
+    try:
+        return await add_ad_set_to_campaign(campaign_id, name, objective, spec, index, db)
+    except MetaAuthError as e:
+        raise HTTPException(503, f"Meta auth error: {e}")
+    except HTTPStatusError as e:
+        raise HTTPException(e.response.status_code, f"Meta API error: {e.response.text[:400]}")
 
 
 class SetStatusRequest(BaseModel):
