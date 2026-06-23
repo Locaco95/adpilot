@@ -105,6 +105,11 @@ async def _create_ad_set(
             "custom_event_type": "PURCHASE",
         })
 
+    import logging
+    logging.getLogger("uvicorn.error").info(
+        "ADSET CREATE targeting=%s optimization=%s objective=%s",
+        targeting, optimization_goal, getattr(objective, "value", objective),
+    )
     ad_set = await client.post(f"/{acct}/adsets", data=ad_set_data)
     ad_set_id = ad_set["id"]
 
