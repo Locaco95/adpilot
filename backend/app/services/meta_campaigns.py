@@ -221,6 +221,13 @@ async def set_campaign_status(campaign_id: str, status: str) -> dict:
     return {"campaign_id": campaign_id, "status": status, "ad_sets_updated": len(adset_ids)}
 
 
+async def delete_campaign(campaign_id: str) -> dict:
+    """Delete a campaign (Meta also removes its ad sets + ads). Irreversible."""
+    client = get_meta_client()
+    await client.delete(f"/{campaign_id}")
+    return {"campaign_id": campaign_id, "deleted": True}
+
+
 async def set_adset_status(adset_id: str, status: str) -> dict:
     """Set a single ad set and its ads to ACTIVE or PAUSED.
 

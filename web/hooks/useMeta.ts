@@ -7,6 +7,7 @@ import {
   getMetaInsights,
   setMetaCampaignStatus,
   setMetaAdSetStatus,
+  deleteMetaCampaign,
 } from "@/services/meta.service";
 
 export const metaKeys = {
@@ -70,6 +71,16 @@ export function useSetMetaCampaignStatus() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: metaKeys.campaigns() });
       qc.invalidateQueries({ queryKey: metaKeys.all });
+    },
+  });
+}
+
+export function useDeleteMetaCampaign() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteMetaCampaign(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: metaKeys.campaigns() });
     },
   });
 }

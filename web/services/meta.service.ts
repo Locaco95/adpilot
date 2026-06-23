@@ -1,5 +1,5 @@
 /* ── AdPilot — Meta Marketing API service ──────────────────────── */
-import { apiGet, apiPost } from "./api-client";
+import { apiGet, apiPost, apiDelete } from "./api-client";
 import type {
   MetaStatus,
   MetaAccount,
@@ -45,6 +45,13 @@ export function setMetaCampaignStatus(
   status: "ACTIVE" | "PAUSED"
 ): Promise<{ campaign_id: string; status: string; ad_sets_updated: number }> {
   return apiPost(`/meta/campaigns/${campaignId}/status`, { status });
+}
+
+/* Delete a campaign (and its ad sets + ads). Irreversible. */
+export function deleteMetaCampaign(
+  campaignId: string
+): Promise<{ campaign_id: string; deleted: boolean }> {
+  return apiDelete(`/meta/campaigns/${campaignId}`);
 }
 
 /* Search Meta's interest catalog for detailed targeting. */

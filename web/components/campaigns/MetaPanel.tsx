@@ -1,7 +1,7 @@
 "use client";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMetaStatus, useMetaAccount, useMetaCampaigns, useMetaInsights, useSetMetaCampaignStatus, useMetaCampaignAdSets, useSetMetaAdSetStatus, metaKeys } from "@/hooks/useMeta";
+import { useMetaStatus, useMetaAccount, useMetaCampaigns, useMetaInsights, useSetMetaCampaignStatus, useMetaCampaignAdSets, useSetMetaAdSetStatus, useDeleteMetaCampaign, metaKeys } from "@/hooks/useMeta";
 import { createMetaCampaign, searchMetaInterests } from "@/services/meta.service";
 import { CreativePicker } from "@/components/common/CreativePicker";
 import type { MetaCampaign, MetaAdSet, MetaInterest, MetaInsightRow, MetaObjective, CreateMetaCampaignResult } from "@/types/meta";
@@ -428,6 +428,39 @@ function ActivateConfirm({ name, scope, busy, onConfirm, onCancel }: {
   );
 }
 
+/* Modal confirming an irreversible campaign delete. */
+function DeleteConfirm({ name, busy, onConfirm, onCancel }: {
+  name: string; busy: boolean; onConfirm: () => void; onCancel: () => void;
+}) {
+  return (
+    <div onClick={onCancel} style={{
+      position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 1000,
+      display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+    }}>
+      <div onClick={(e) => e.stopPropagation()} className="card" style={{ padding: 22, maxWidth: 420, width: "100%" }}>
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>Delete “{name}”?</div>
+        <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>
+          This permanently deletes the campaign <b>and all its ad sets and ads</b> from
+          Meta. This <b>cannot be undone</b>. (To just stop spending, use Pause instead.)
+        </div>
+        <div style={{ display: "flex", gap: 8, marginTop: 18, justifyContent: "flex-end" }}>
+          <button onClick={onCancel} disabled={busy}
+            style={{ background: "var(--bg-input)", border: "1px solid var(--border-subtle)", color: "var(--text-primary)",
+              borderRadius: "var(--radius-sm)", padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+            Cancel
+          </button>
+          <button onClick={onConfirm} disabled={busy}
+            style={{ background: "var(--danger)", border: "none", color: "var(--text-inverse)",
+              borderRadius: "var(--radius-sm)", padding: "8px 14px", fontSize: 13, fontWeight: 700,
+              cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1 }}>
+            {busy ? "Deleting…" : "Delete permanently"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* Small Pause (one-click) / Activate (caller confirms) button pair. */
 function StatusButton({ active, busy, onPause, onActivate }: {
   active: boolean; busy: boolean; onPause: () => void; onActivate: () => void;
@@ -498,12 +531,14 @@ export function MetaPanel() {
   const connected = !!status?.configured;
   const [showCreate, setShowCreate] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const { data: account } = useMetaAccount(connected);
   const { data: campaignsResp, isLoading: campaignsLoading, isError, error } = useMetaCampaigns(connected);
   const { data: insightsResp } = useMetaInsights("campaign", "last_7d", connected);
   const setStatus = useSetMetaCampaignStatus();
+  const deleteCampaign = useDeleteMetaCampaign();
   const setAdSetStatusForConfirm = useSetMetaAdSetStatus(
     confirmTarget?.scope === "adset" ? confirmTarget.campaignId : ""
   );
@@ -609,7 +644,7 @@ export function MetaPanel() {
                 <th style={{ width: 90 }}>7d Spend</th>
                 <th className="col-hide-mobile" style={{ width: 70 }}>Clicks</th>
                 <th className="col-hide-mobile" style={{ width: 64 }}>CTR</th>
-                <th style={{ width: 96 }}></th>
+                <th style={{ width: 150 }}></th>
               </tr>
             </thead>
             <tbody>
@@ -637,9 +672,18 @@ export function MetaPanel() {
                       <td className="col-hide-mobile">{ins?.clicks ?? "—"}</td>
                       <td className="col-hide-mobile">{ins?.ctr ? `${Number(ins.ctr).toFixed(2)}%` : "—"}</td>
                       <td>
-                        <StatusButton active={active} busy={rowBusy}
-                          onPause={() => setStatus.mutate({ id: c.id, status: "PAUSED" })}
-                          onActivate={() => setConfirmTarget({ scope: "campaign", id: c.id, name: c.name })} />
+                        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                          <StatusButton active={active} busy={rowBusy}
+                            onPause={() => setStatus.mutate({ id: c.id, status: "PAUSED" })}
+                            onActivate={() => setConfirmTarget({ scope: "campaign", id: c.id, name: c.name })} />
+                          <button onClick={() => setDeleteTarget({ id: c.id, name: c.name })}
+                            title="Delete campaign"
+                            style={{ background: "transparent", border: "1px solid var(--border-subtle)",
+                              color: "var(--danger)", borderRadius: "var(--radius-sm)", padding: "5px 9px",
+                              fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                     {isOpen && (
@@ -668,6 +712,17 @@ export function MetaPanel() {
               setAdSetStatusForConfirm.mutate({ id: confirmTarget.id, status: "ACTIVE" }, opts);
             }
           }}
+        />
+      )}
+
+      {deleteTarget && (
+        <DeleteConfirm
+          name={deleteTarget.name}
+          busy={deleteCampaign.isPending}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={() =>
+            deleteCampaign.mutate(deleteTarget.id, { onSettled: () => setDeleteTarget(null) })
+          }
         />
       )}
     </div>

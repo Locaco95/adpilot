@@ -86,6 +86,17 @@ export async function apiPost<T>(
   return handleResponse<T>(res);
 }
 
+export async function apiDelete<T>(path: string): Promise<T> {
+  const res = await fetchWithTimeout(`${API_BASE}${path}`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+    },
+  });
+  return handleResponse<T>(res);
+}
+
 export async function apiPatch<T>(
   path: string,
   body: unknown

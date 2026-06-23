@@ -16,6 +16,7 @@ from app.services.meta_campaigns import (
     create_campaign_with_adset,
     set_campaign_status,
     set_adset_status,
+    delete_campaign,
 )
 from app.settings import get_settings
 
@@ -159,6 +160,21 @@ async def campaign_status(
     """
     try:
         return await set_campaign_status(campaign_id, body.status)
+    except MetaAuthError as e:
+        raise HTTPException(503, f"Meta auth error: {e}")
+    except HTTPStatusError as e:
+        raise HTTPException(
+            status_code=e.response.status_code,
+            detail=f"Meta API error: {e.response.text[:400]}",
+        )
+
+
+@router.delete("/campaigns/{campaign_id}")
+async def remove_campaign(campaign_id: str, _user=Depends(get_current_user)):
+    """Delete a campaign (and its ad sets + ads). Irreversible — the frontend
+    gates this behind a confirmation dialog."""
+    try:
+        return await delete_campaign(campaign_id)
     except MetaAuthError as e:
         raise HTTPException(503, f"Meta auth error: {e}")
     except HTTPStatusError as e:

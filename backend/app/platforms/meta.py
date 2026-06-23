@@ -57,6 +57,14 @@ class MetaClient:
         r.raise_for_status()
         return r.json()
 
+    async def delete(self, path: str) -> dict[str, Any]:
+        token = self._require()
+        url = path if path.startswith("http") else f"{API_BASE}{path}"
+        async with httpx.AsyncClient(timeout=30) as h:
+            r = await h.delete(url, params={"access_token": token})
+        r.raise_for_status()
+        return r.json()
+
     async def post_multipart(self, path: str, files: dict, data: dict | None = None) -> dict[str, Any]:
         """Multipart POST (for /adimages and /advideos uploads)."""
         token = self._require()
