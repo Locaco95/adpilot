@@ -5,6 +5,7 @@ import type {
   MetaAccount,
   MetaCampaign,
   MetaAdSet,
+  MetaInterest,
   MetaInsightRow,
   MetaListResponse,
   CreateMetaCampaignRequest,
@@ -44,6 +45,11 @@ export function setMetaCampaignStatus(
   status: "ACTIVE" | "PAUSED"
 ): Promise<{ campaign_id: string; status: string; ad_sets_updated: number }> {
   return apiPost(`/meta/campaigns/${campaignId}/status`, { status });
+}
+
+/* Search Meta's interest catalog for detailed targeting. */
+export function searchMetaInterests(q: string): Promise<{ interests: MetaInterest[] }> {
+  return apiGet<{ interests: MetaInterest[] }>(`/meta/targeting/interests?q=${encodeURIComponent(q)}`);
 }
 
 /* Ad sets under one campaign (status + budget). */

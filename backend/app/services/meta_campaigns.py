@@ -36,11 +36,20 @@ async def _create_ad_set(
     creative_file_id is supplied."""
     s = get_settings()
     optimization_goal = OBJECTIVE_OPTIMIZATION.get(objective, "LINK_CLICKS")
-    targeting = json.dumps({
+    targeting_spec: dict = {
         "geo_locations": {"countries": [spec.country_code.upper()]},
         "age_min": spec.age_min,
         "age_max": spec.age_max,
-    })
+    }
+    if spec.gender:  # 0 = all (omit); 1 = men; 2 = women
+        targeting_spec["genders"] = [spec.gender]
+    if spec.languages:
+        targeting_spec["locales"] = spec.languages
+    if spec.interests:
+        targeting_spec["flexible_spec"] = [
+            {"interests": [{"id": i.id, "name": i.name} for i in spec.interests]}
+        ]
+    targeting = json.dumps(targeting_spec)
     ad_set_data = {
         "name": f"{campaign_name} ad set {index} ({spec.country_code.upper()})",
         "campaign_id": campaign_id,

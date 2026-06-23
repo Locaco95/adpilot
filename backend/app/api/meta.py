@@ -44,6 +44,22 @@ async def status(_user=Depends(get_current_user)):
     }
 
 
+@router.get("/targeting/interests")
+async def search_interests(
+    q: str = Query(..., min_length=2, description="Interest search term"),
+    _user=Depends(get_current_user),
+):
+    """Search Meta's interest catalog (for detailed targeting)."""
+    data = await _call("/search", params={"type": "adinterest", "q": q, "limit": 15})
+    out = [
+        {"id": r["id"], "name": r["name"],
+         "audience": r.get("audience_size_upper_bound") or r.get("audience_size_lower_bound"),
+         "path": " › ".join(r.get("path", [])) if r.get("path") else None}
+        for r in data.get("data", [])
+    ]
+    return {"interests": out}
+
+
 @router.get("/account")
 async def account(_user=Depends(get_current_user)):
     s = get_settings()

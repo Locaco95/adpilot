@@ -1,10 +1,10 @@
 "use client";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMetaStatus, useMetaAccount, useMetaCampaigns, useMetaInsights, useSetMetaCampaignStatus, useMetaCampaignAdSets, useSetMetaAdSetStatus, metaKeys } from "@/hooks/useMeta";
-import { createMetaCampaign } from "@/services/meta.service";
+import { createMetaCampaign, searchMetaInterests } from "@/services/meta.service";
 import { CreativePicker } from "@/components/common/CreativePicker";
-import type { MetaCampaign, MetaAdSet, MetaInsightRow, MetaObjective, CreateMetaCampaignResult } from "@/types/meta";
+import type { MetaCampaign, MetaAdSet, MetaInterest, MetaInsightRow, MetaObjective, CreateMetaCampaignResult } from "@/types/meta";
 
 const REGIONS: { code: string; label: string }[] = [
   { code: "SA", label: "Saudi Arabia" },
@@ -36,13 +36,97 @@ interface AdSetDraft {
   country: string;
   budget: string;
   endDate: string; // yyyy-mm-dd (local); "" = no end, runs until paused
+  gender: number;  // 0=all, 1=men, 2=women
+  language: number; // 0 = all (omit), else a Meta locale key
+  ageMin: string;
+  ageMax: string;
+  interests: { id: string; name: string }[];
   creativeFileId: string | null;
   destinationUrl: string;
   headline: string;
 }
 
 function emptyAdSet(): AdSetDraft {
-  return { country: "SA", budget: "100", endDate: "", creativeFileId: null, destinationUrl: "", headline: "" };
+  return {
+    country: "SA", budget: "100", endDate: "",
+    gender: 0, language: 0, ageMin: "18", ageMax: "65", interests: [],
+    creativeFileId: null, destinationUrl: "", headline: "",
+  };
+}
+
+const LANGUAGES: { key: number; label: string }[] = [
+  { key: 0, label: "All languages" },
+  { key: 28, label: "Arabic" },
+  { key: 6, label: "English (US)" },
+  { key: 24, label: "English (UK)" },
+];
+
+/* Debounced interest search → click results to add as chips. */
+function InterestSearch({ selected, onChange }: {
+  selected: { id: string; name: string }[];
+  onChange: (next: { id: string; name: string }[]) => void;
+}) {
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState<MetaInterest[]>([]);
+  const [loading, setLoading] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (timer.current) clearTimeout(timer.current);
+    const term = q.trim();
+    timer.current = setTimeout(async () => {
+      if (term.length < 2) { setResults([]); return; }
+      setLoading(true);
+      try {
+        const r = await searchMetaInterests(term);
+        setResults(r.interests);
+      } catch { setResults([]); }
+      finally { setLoading(false); }
+    }, term.length < 2 ? 0 : 350);
+    return () => { if (timer.current) clearTimeout(timer.current); };
+  }, [q]);
+
+  const add = (it: MetaInterest) => {
+    if (!selected.some((s) => s.id === it.id)) onChange([...selected, { id: it.id, name: it.name }]);
+    setQ(""); setResults([]);
+  };
+  const remove = (id: string) => onChange(selected.filter((s) => s.id !== id));
+
+  return (
+    <div style={{ position: "relative" }}>
+      <input style={inputStyle} value={q} onChange={(e) => setQ(e.target.value)}
+        placeholder="Search interests, e.g. cooking, kitchen, online shopping" />
+      {(loading || results.length > 0) && (
+        <div style={{ position: "absolute", zIndex: 50, top: "100%", left: 0, right: 0, marginTop: 4,
+          background: "var(--bg-input)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-sm)",
+          maxHeight: 220, overflowY: "auto", boxShadow: "0 6px 20px rgba(0,0,0,0.35)" }}>
+          {loading && <div style={{ padding: 10, fontSize: 12, color: "var(--text-tertiary)" }}>Searching…</div>}
+          {!loading && results.map((it) => (
+            <button key={it.id} onClick={() => add(it)}
+              style={{ display: "block", width: "100%", textAlign: "left", background: "transparent",
+                border: "none", borderBottom: "1px solid var(--border-subtle)", color: "var(--text-primary)",
+                padding: "8px 10px", fontSize: 13, cursor: "pointer" }}>
+              {it.name}
+              {it.audience ? <span style={{ color: "var(--text-tertiary)", fontSize: 11 }}> · {(it.audience / 1e6).toFixed(0)}M</span> : null}
+              {it.path ? <span style={{ display: "block", color: "var(--text-tertiary)", fontSize: 10 }}>{it.path}</span> : null}
+            </button>
+          ))}
+        </div>
+      )}
+      {selected.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+          {selected.map((s) => (
+            <span key={s.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12,
+              background: "var(--accent)", color: "var(--text-inverse)", borderRadius: 999, padding: "3px 10px" }}>
+              {s.name}
+              <button onClick={() => remove(s.id)} style={{ background: "transparent", border: "none",
+                color: "var(--text-inverse)", cursor: "pointer", fontSize: 13, lineHeight: 1 }}>×</button>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function AdSetCard({ index, total, draft, onChange, onRemove, currency, showBudget }: {
@@ -78,6 +162,35 @@ function AdSetCard({ index, total, draft, onChange, onRemove, currency, showBudg
           <label style={labelStyle}>End date (optional — auto-stops; leave empty to run until paused)</label>
           <input style={inputStyle} type="date" value={draft.endDate} onChange={(e) => set({ endDate: e.target.value })} />
         </div>
+
+        {/* Audience targeting */}
+        <div>
+          <label style={labelStyle}>Gender</label>
+          <select style={inputStyle} value={draft.gender} onChange={(e) => set({ gender: Number(e.target.value) })}>
+            <option value={0}>All</option>
+            <option value={1}>Men</option>
+            <option value={2}>Women</option>
+          </select>
+        </div>
+        <div>
+          <label style={labelStyle}>Language</label>
+          <select style={inputStyle} value={draft.language} onChange={(e) => set({ language: Number(e.target.value) })}>
+            {LANGUAGES.map((l) => <option key={l.key} value={l.key}>{l.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={labelStyle}>Age min</label>
+          <input style={inputStyle} type="number" min={13} max={65} value={draft.ageMin} onChange={(e) => set({ ageMin: e.target.value })} />
+        </div>
+        <div>
+          <label style={labelStyle}>Age max</label>
+          <input style={inputStyle} type="number" min={13} max={65} value={draft.ageMax} onChange={(e) => set({ ageMax: e.target.value })} />
+        </div>
+        <div style={{ gridColumn: "1 / -1" }}>
+          <label style={labelStyle}>Interests (optional — narrows to relevant people)</label>
+          <InterestSearch selected={draft.interests} onChange={(next) => set({ interests: next })} />
+        </div>
+
         <div style={{ gridColumn: "1 / -1" }}>
           <label style={labelStyle}>Creative — from Google Drive (optional)</label>
           <CreativePicker selectedFileId={draft.creativeFileId} onSelect={(id) => set({ creativeFileId: id })} />
@@ -95,7 +208,7 @@ function AdSetCard({ index, total, draft, onChange, onRemove, currency, showBudg
           </>
         )}
       </div>
-      <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 8 }}>Targets ages 18–65 · created PAUSED</div>
+      <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 8 }}>Created PAUSED</div>
     </div>
   );
 }
@@ -143,8 +256,11 @@ function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone
         ad_sets: adSets.map((a) => ({
           country_code: a.country,
           ...(cbo ? {} : { daily_budget: Number(a.budget) }),
-          age_min: 18,
-          age_max: 65,
+          age_min: Number(a.ageMin) || 18,
+          age_max: Number(a.ageMax) || 65,
+          ...(a.gender ? { gender: a.gender } : {}),
+          ...(a.language ? { languages: [a.language] } : {}),
+          ...(a.interests.length ? { interests: a.interests } : {}),
           ...(a.endDate ? { end_time: new Date(`${a.endDate}T23:59:59`).toISOString() } : {}),
           ...(a.creativeFileId ? {
             creative_file_id: a.creativeFileId,

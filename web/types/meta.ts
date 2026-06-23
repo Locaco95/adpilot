@@ -62,11 +62,21 @@ export type MetaObjective =
   | "OUTCOME_ENGAGEMENT"
   | "OUTCOME_LEADS";
 
+export interface MetaInterest {
+  id: string;
+  name: string;
+  audience?: number;
+  path?: string | null;
+}
+
 export interface AdSetSpec {
   country_code: string;
   daily_budget?: number; // omit in CBO (campaign holds the budget)
   age_min: number;
   age_max: number;
+  gender?: number;       // 0=all, 1=men, 2=women
+  languages?: number[];  // Meta locale keys, e.g. [28]=Arabic
+  interests?: { id: string; name: string }[];
   start_time?: string; // ISO-8601; omit => starts when activated
   end_time?: string;   // ISO-8601; omit => runs until paused
   // Optional creative/ad layer (media via Google Drive OAuth)

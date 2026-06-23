@@ -29,6 +29,12 @@ OBJECTIVE_OPTIMIZATION = {
 }
 
 
+class Interest(BaseModel):
+    """A detailed-targeting interest, as returned by the interest search."""
+    id: str
+    name: str
+
+
 class AdSetSpec(BaseModel):
     """One ad set under the campaign: its own targeting, budget and (optional) ad.
 
@@ -39,6 +45,11 @@ class AdSetSpec(BaseModel):
     daily_budget: float | None = Field(None, gt=0, description="Per-ad-set budget (ABO). Omit when the campaign holds the budget (CBO).")
     age_min: int = Field(18, ge=13, le=65)
     age_max: int = Field(65, ge=13, le=65)
+
+    # Audience targeting (optional). gender: 0=all, 1=men, 2=women.
+    gender: int = Field(0, ge=0, le=2, description="0=all, 1=men, 2=women")
+    languages: list[int] = Field(default_factory=list, description="Meta locale keys, e.g. [28] for Arabic.")
+    interests: list[Interest] = Field(default_factory=list, description="Detailed-targeting interests (id+name from search).")
 
     # Schedule (optional). ISO-8601 strings passed straight to Meta. start_time
     # omitted => starts when activated; end_time omitted => runs until paused.
