@@ -28,9 +28,27 @@ from app.services.media_service import get_creative_media, MediaType
 from app.settings import get_settings
 
 
+async def _resolve_media(client, acct, db, file_id, media_cache):
+    """Upload a creative to Meta ONCE per request and cache the result, so N ad
+    sets sharing one video/image don't trigger N heavy uploads (which can blow
+    the request timeout). Returns ("image", image_hash) or ("video", video_id, thumb)."""
+    if file_id in media_cache:
+        return media_cache[file_id]
+    async with get_creative_media(db, file_id, None) as creative:
+        if creative.media_type == MediaType.IMAGE:
+            image_hash = await client.upload_image(acct, creative.path, creative.filename, creative.content_type)
+            result = ("image", image_hash, None)
+        else:
+            video_id = await client.upload_video(acct, creative.path, creative.filename, creative.content_type)
+            thumb = await client.get_video_thumbnail(video_id)
+            result = ("video", video_id, thumb)
+    media_cache[file_id] = result
+    return result
+
+
 async def _create_ad_set(
     client, acct: str, campaign_id: str, campaign_name: str,
-    objective, spec: AdSetSpec, index: int, db: AsyncSession,
+    objective, spec: AdSetSpec, index: int, db: AsyncSession, media_cache: dict,
 ) -> CreatedAdSet:
     """Create one PAUSED ad set under the campaign, plus its ad/creative if a
     creative_file_id is supplied."""
@@ -98,31 +116,28 @@ async def _create_ad_set(
 
     cta = {"type": spec.call_to_action, "value": {"link": spec.destination_url}}
 
-    async with get_creative_media(db, spec.creative_file_id, None) as creative:
-        if creative.media_type == MediaType.IMAGE:
-            image_hash = await client.upload_image(acct, creative.path, creative.filename, creative.content_type)
-            object_story_spec = {
-                "page_id": page_id,
-                "link_data": {
-                    "message": spec.message or "",
-                    "link": spec.destination_url,
-                    "name": spec.headline or "",
-                    "image_hash": image_hash,
-                    "call_to_action": cta,
-                },
-            }
-        else:  # VIDEO
-            video_id = await client.upload_video(acct, creative.path, creative.filename, creative.content_type)
-            video_data = {
+    media = await _resolve_media(client, acct, db, spec.creative_file_id, media_cache)
+    if media[0] == "image":
+        object_story_spec = {
+            "page_id": page_id,
+            "link_data": {
                 "message": spec.message or "",
-                "video_id": video_id,
-                "title": spec.headline or "",
+                "link": spec.destination_url,
+                "name": spec.headline or "",
+                "image_hash": media[1],
                 "call_to_action": cta,
-            }
-            thumb = await client.get_video_thumbnail(video_id)
-            if thumb:
-                video_data["image_url"] = thumb
-            object_story_spec = {"page_id": page_id, "video_data": video_data}
+            },
+        }
+    else:  # video
+        video_data = {
+            "message": spec.message or "",
+            "video_id": media[1],
+            "title": spec.headline or "",
+            "call_to_action": cta,
+        }
+        if media[2]:
+            video_data["image_url"] = media[2]
+        object_story_spec = {"page_id": page_id, "video_data": video_data}
 
     creative_resp = await client.post(
         f"/{acct}/adcreatives",
@@ -181,9 +196,10 @@ async def create_campaign_with_adset(
     # 2. Every ad set under it (each PAUSED, with its own ad when given a creative).
     #    body.ad_sets is always populated (validator folds legacy fields in).
     created: list[CreatedAdSet] = []
+    media_cache: dict = {}  # upload each unique creative to Meta only once
     for i, spec in enumerate(body.ad_sets, start=1):
         created.append(
-            await _create_ad_set(client, acct, campaign_id, body.name, body.objective, spec, i, db)
+            await _create_ad_set(client, acct, campaign_id, body.name, body.objective, spec, i, db, media_cache)
         )
 
     first = created[0]
