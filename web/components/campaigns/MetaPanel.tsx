@@ -224,7 +224,12 @@ function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone
   const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [adSetErrors, setAdSetErrors] = useState<string[]>([]);
+  const [failedIdx, setFailedIdx] = useState<number[]>([]);   // 0-based ad-set indexes that failed
+  const [campaignId, setCampaignId] = useState<string | null>(null); // existing campaign to retry into
+  const [madeAdSets, setMadeAdSets] = useState<CreatedAdSet[]>([]);
   const [result, setResult] = useState<CreateMetaCampaignResult | null>(null);
+
+  const cbo = budgetLevel === "cbo";
 
   function updateAdSet(i: number, d: AdSetDraft) {
     setAdSets((prev) => prev.map((s, idx) => (idx === i ? d : s)));
@@ -233,10 +238,47 @@ function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone
     setAdSets((prev) => prev.filter((_, idx) => idx !== i));
   }
 
+  function buildSpec(a: AdSetDraft): AdSetSpec {
+    return {
+      country_code: a.country,
+      ...(cbo ? {} : { daily_budget: Number(a.budget) }),
+      age_min: Number(a.ageMin) || 18,
+      age_max: Number(a.ageMax) || 65,
+      ...(a.gender ? { gender: a.gender } : {}),
+      ...(a.language ? { languages: [a.language] } : {}),
+      ...(a.interests.length ? { interests: a.interests } : {}),
+      ...(a.endDate ? { end_time: new Date(`${a.endDate}T23:59:59`).toISOString() } : {}),
+      ...(a.creativeFileId ? {
+        creative_file_id: a.creativeFileId,
+        destination_url: a.destinationUrl.trim(),
+        headline: a.headline.trim() || undefined,
+      } : {}),
+    };
+  }
+
+  // Create the given ad-set indexes into an existing campaign, one request each.
+  // Returns the new successes + which indexes failed (with messages).
+  async function runAdSets(cid: string, indexes: number[]) {
+    const made: CreatedAdSet[] = [];
+    const errs: string[] = [];
+    const failed: number[] = [];
+    for (let pos = 0; pos < indexes.length; pos++) {
+      const i = indexes[pos];
+      const a = adSets[i];
+      setProgress(`Creating ad set ${pos + 1} of ${indexes.length}${a.creativeFileId ? " (uploading creative…)" : ""}`);
+      try {
+        made.push(await createMetaAdSet(cid, buildSpec(a), { index: i + 1, name: name.trim(), objective }));
+      } catch (e) {
+        errs.push(`Ad set ${i + 1}: ${(e as Error)?.message ?? "failed"}`);
+        failed.push(i);
+      }
+    }
+    return { made, errs, failed };
+  }
+
   async function submit() {
     setError(null);
     if (!name.trim()) { setError("Campaign name is required."); return; }
-    const cbo = budgetLevel === "cbo";
     if (cbo) {
       const cb = Number(campaignBudget);
       if (!cb || cb <= 0) { setError("Enter the campaign daily budget."); return; }
@@ -251,45 +293,19 @@ function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone
     }
     setSubmitting(true);
     setAdSetErrors([]);
-    const errs: string[] = [];
-    const made: CreatedAdSet[] = [];
     try {
-      // 1. Campaign shell first (fast).
       setProgress("Creating campaign…");
       const shell = await createMetaCampaignShell({
         name: name.trim(),
         objective,
         ...(cbo ? { campaign_daily_budget: Number(campaignBudget) } : {}),
       });
+      setCampaignId(shell.campaign_id);
 
-      // 2. One ad set per request — each carries at most one video upload, so a
-      //    big multi-video campaign never lives in one giant request (502).
-      for (let i = 0; i < adSets.length; i++) {
-        const a = adSets[i];
-        setProgress(`Creating ad set ${i + 1} of ${adSets.length}${a.creativeFileId ? " (uploading creative…)" : ""}`);
-        const spec: AdSetSpec = {
-          country_code: a.country,
-          ...(cbo ? {} : { daily_budget: Number(a.budget) }),
-          age_min: Number(a.ageMin) || 18,
-          age_max: Number(a.ageMax) || 65,
-          ...(a.gender ? { gender: a.gender } : {}),
-          ...(a.language ? { languages: [a.language] } : {}),
-          ...(a.interests.length ? { interests: a.interests } : {}),
-          ...(a.endDate ? { end_time: new Date(`${a.endDate}T23:59:59`).toISOString() } : {}),
-          ...(a.creativeFileId ? {
-            creative_file_id: a.creativeFileId,
-            destination_url: a.destinationUrl.trim(),
-            headline: a.headline.trim() || undefined,
-          } : {}),
-        };
-        try {
-          made.push(await createMetaAdSet(shell.campaign_id, spec, { index: i + 1, name: name.trim(), objective }));
-        } catch (e) {
-          errs.push(`Ad set ${i + 1}: ${(e as Error)?.message ?? "failed"}`);
-        }
-      }
-
+      const { made, errs, failed } = await runAdSets(shell.campaign_id, adSets.map((_, i) => i));
+      setMadeAdSets(made);
       setAdSetErrors(errs);
+      setFailedIdx(failed);
       qc.invalidateQueries({ queryKey: metaKeys.campaigns() });
       if (made.length === 0) {
         setError(`Campaign created but every ad set failed.\n${errs.join("\n")}`);
@@ -298,6 +314,27 @@ function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone
       }
     } catch (e) {
       setError((e as Error)?.message ?? "Failed to create campaign");
+    } finally {
+      setProgress(null);
+      setSubmitting(false);
+    }
+  }
+
+  // Retry ONLY the previously-failed ad sets into the same existing campaign.
+  async function retryFailed() {
+    if (!campaignId || failedIdx.length === 0) return;
+    setSubmitting(true);
+    try {
+      const { made, errs, failed } = await runAdSets(campaignId, failedIdx);
+      const allMade = [...madeAdSets, ...made];
+      setMadeAdSets(allMade);
+      setAdSetErrors(errs);
+      setFailedIdx(failed);
+      qc.invalidateQueries({ queryKey: metaKeys.campaigns() });
+      setResult({ campaign_id: campaignId, status: "PAUSED", ad_sets: allMade });
+      if (allMade.length === 0) setError(`Every ad set still failed.\n${errs.join("\n")}`);
+    } catch (e) {
+      setError((e as Error)?.message ?? "Retry failed");
     } finally {
       setProgress(null);
       setSubmitting(false);
@@ -320,14 +357,24 @@ function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone
         </div>
         {adSetErrors.length > 0 && (
           <div style={{ fontSize: 12, color: "var(--warning)", marginTop: 10, lineHeight: 1.6 }}>
-            Some ad sets failed (the rest were created):
+            {failedIdx.length} ad set{failedIdx.length > 1 ? "s" : ""} failed (the rest were created):
             {adSetErrors.map((m, i) => <div key={i}>• {m}</div>)}
           </div>
         )}
         <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 8 }}>
           Created paused — hit Activate on the campaign row below to go live (spends real money).
         </div>
-        <button onClick={onDone} style={{ ...inputStyle, width: "auto", marginTop: 12, cursor: "pointer", fontWeight: 600 }}>Done</button>
+        {progress && <div style={{ color: "var(--text-secondary)", fontSize: 12, marginTop: 8 }}>⏳ {progress}</div>}
+        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+          {failedIdx.length > 0 && (
+            <button onClick={retryFailed} disabled={submitting}
+              style={{ ...inputStyle, width: "auto", cursor: submitting ? "default" : "pointer", fontWeight: 600,
+                background: "var(--warning)", color: "var(--text-inverse)", border: "none", opacity: submitting ? 0.6 : 1 }}>
+              {submitting ? "Retrying…" : `Retry ${failedIdx.length} failed ad set${failedIdx.length > 1 ? "s" : ""}`}
+            </button>
+          )}
+          <button onClick={onDone} disabled={submitting} style={{ ...inputStyle, width: "auto", cursor: "pointer", fontWeight: 600 }}>Done</button>
+        </div>
       </div>
     );
   }
@@ -394,11 +441,19 @@ function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone
       {progress && <div style={{ color: "var(--text-secondary)", fontSize: 12, marginTop: 10 }}>⏳ {progress}</div>}
 
       <div style={{ display: "flex", gap: 8, marginTop: 14, alignItems: "center" }}>
-        <button onClick={submit} disabled={submitting}
-          style={{ ...inputStyle, width: "auto", cursor: submitting ? "default" : "pointer", fontWeight: 600,
-            background: "var(--accent)", color: "var(--text-inverse)", border: "none", opacity: submitting ? 0.6 : 1 }}>
-          {submitting ? "Creating…" : `Create ${adSets.length > 1 ? `${adSets.length} ad sets ` : ""}(paused)`}
-        </button>
+        {campaignId && failedIdx.length > 0 ? (
+          <button onClick={retryFailed} disabled={submitting}
+            style={{ ...inputStyle, width: "auto", cursor: submitting ? "default" : "pointer", fontWeight: 600,
+              background: "var(--warning)", color: "var(--text-inverse)", border: "none", opacity: submitting ? 0.6 : 1 }}>
+            {submitting ? "Retrying…" : `Retry ${failedIdx.length} failed ad set${failedIdx.length > 1 ? "s" : ""}`}
+          </button>
+        ) : (
+          <button onClick={submit} disabled={submitting}
+            style={{ ...inputStyle, width: "auto", cursor: submitting ? "default" : "pointer", fontWeight: 600,
+              background: "var(--accent)", color: "var(--text-inverse)", border: "none", opacity: submitting ? 0.6 : 1 }}>
+            {submitting ? "Creating…" : `Create ${adSets.length > 1 ? `${adSets.length} ad sets ` : ""}(paused)`}
+          </button>
+        )}
         <button onClick={onDone} disabled={submitting}
           style={{ ...inputStyle, width: "auto", cursor: "pointer", fontWeight: 600 }}>Cancel</button>
       </div>
