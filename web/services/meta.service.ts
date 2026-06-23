@@ -36,7 +36,9 @@ export function getMetaInsights(
 export function createMetaCampaign(
   payload: CreateMetaCampaignRequest
 ): Promise<CreateMetaCampaignResult> {
-  return apiPost<CreateMetaCampaignResult>("/meta/campaigns/create", payload);
+  // Video creatives are downloaded from Drive + uploaded to Meta server-side,
+  // which can take well over the default 15s — allow up to 5 minutes.
+  return apiPost<CreateMetaCampaignResult>("/meta/campaigns/create", payload, 300_000);
 }
 
 /* Activate or pause a campaign + all its ad sets + ads. Activating spends real money. */

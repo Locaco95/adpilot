@@ -73,7 +73,8 @@ export async function apiGet<T>(path: string): Promise<T> {
 
 export async function apiPost<T>(
   path: string,
-  body?: unknown
+  body?: unknown,
+  timeoutMs?: number
 ): Promise<T> {
   const res = await fetchWithTimeout(`${API_BASE}${path}`, {
     method: "POST",
@@ -82,7 +83,7 @@ export async function apiPost<T>(
       ...authHeaders(),
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  }, timeoutMs);
   return handleResponse<T>(res);
 }
 
