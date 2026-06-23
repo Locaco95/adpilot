@@ -49,6 +49,10 @@ async def _create_ad_set(
         targeting_spec["flexible_spec"] = [
             {"interests": [{"id": i.id, "name": i.name} for i in spec.interests]}
         ]
+        # With detailed targeting Meta now REQUIRES an explicit Advantage+ audience
+        # decision (subcode 1870227). 0 = respect the chosen interests strictly
+        # (don't let Meta expand beyond them) — correct for interest testing.
+        targeting_spec["targeting_automation"] = {"advantage_audience": 0}
     targeting = json.dumps(targeting_spec)
     ad_set_data = {
         "name": f"{campaign_name} ad set {index} ({spec.country_code.upper()})",
