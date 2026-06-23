@@ -47,13 +47,14 @@ async def _create_ad_set(
         "status": "PAUSED",
         "billing_event": "IMPRESSIONS",
         "optimization_goal": optimization_goal,
-        "bid_strategy": "LOWEST_COST_WITHOUT_CAP",
         "targeting": targeting,
     }
-    # ABO: budget on the ad set. CBO (spec.daily_budget is None): omit — the
-    # campaign holds the budget and Meta splits it across ad sets.
+    # ABO: budget + bid_strategy live on the ad set. CBO (spec.daily_budget is
+    # None): both live on the CAMPAIGN — putting bid_strategy on a budget-less ad
+    # set makes Meta demand a bid_amount (subcode 1815857).
     if spec.daily_budget is not None:
         ad_set_data["daily_budget"] = str(int(round(spec.daily_budget * 100)))
+        ad_set_data["bid_strategy"] = "LOWEST_COST_WITHOUT_CAP"
 
     # Optional schedule. end_time makes the ad set auto-stop (e.g. run 3 days).
     if spec.start_time:
@@ -159,6 +160,8 @@ async def create_campaign_with_adset(
     }
     if body.campaign_daily_budget is not None:
         campaign_data["daily_budget"] = str(int(round(body.campaign_daily_budget * 100)))
+        # CBO: bid strategy lives on the campaign (ad sets have no budget).
+        campaign_data["bid_strategy"] = "LOWEST_COST_WITHOUT_CAP"
     campaign = await client.post(f"/{acct}/campaigns", data=campaign_data)
     campaign_id = campaign["id"]
 
