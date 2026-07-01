@@ -5,6 +5,7 @@ import {
   getMetaCampaigns,
   getMetaCampaignAdSets,
   getMetaInsights,
+  getMetaAudit,
   setMetaCampaignStatus,
   setMetaAdSetStatus,
   deleteMetaCampaign,
@@ -17,8 +18,19 @@ export const metaKeys = {
   campaigns: () => ["meta", "campaigns"] as const,
   insights: (level: string, preset: string) =>
     ["meta", "insights", level, preset] as const,
+  audit: (preset: string) => ["meta", "audit", preset] as const,
   adsets: (campaignId: string) => ["meta", "adsets", campaignId] as const,
 };
+
+export function useMetaAudit(datePreset = "last_7d", enabled = true) {
+  return useQuery({
+    queryKey: metaKeys.audit(datePreset),
+    queryFn: () => getMetaAudit(datePreset),
+    staleTime: 60_000,
+    enabled,
+    retry: false,
+  });
+}
 
 export function useMetaStatus() {
   return useQuery({

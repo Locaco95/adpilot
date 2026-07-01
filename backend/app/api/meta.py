@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import get_current_user, get_db
 from app.platforms.meta import get_meta_client, MetaAuthError
+from app.analytics.meta_audit import audit_metrics
 from pydantic import BaseModel
 
 from app.schemas.meta_create import (
@@ -130,6 +131,86 @@ async def insights(
             "limit": 100,
         },
     )
+
+
+def _sum_action(rows: list[dict], key: str, action_types: tuple[str, ...]) -> float:
+    """Sum a purchase-like action across an insights row's actions/action_values."""
+    total = 0.0
+    for a in rows or []:
+        if a.get("action_type") in action_types:
+            try:
+                total += float(a.get(key, a.get("value", 0)) or 0)
+            except (TypeError, ValueError):
+                pass
+    return total
+
+
+_PURCHASE_TYPES = ("purchase", "omni_purchase", "offsite_conversion.fb_pixel_purchase")
+
+
+@router.get("/audit")
+async def audit(
+    date_preset: str = Query("last_7d"),
+    _user=Depends(get_current_user),
+):
+    """Deterministic KPI audit of the whole ad account for the period.
+
+    Pulls account-level insights, derives the six audited KPIs, then grades them
+    against Meta benchmarks and returns a 0-100 score + tiered fixes. Pure rules
+    (see analytics/meta_audit.py) — no LLM, same input → same result."""
+    s = get_settings()
+    data = await _call(
+        f"/{s.meta_ad_account_id}/insights",
+        params={
+            "level": "account",
+            "date_preset": date_preset,
+            "fields": "spend,impressions,clicks,ctr,cpc,cpm,reach,frequency,actions,action_values",
+            "limit": 1,
+        },
+    )
+    rows = data.get("data", [])
+    if not rows:
+        return {"available": False, "date_preset": date_preset,
+                "message": "No delivery data for this period yet."}
+    r = rows[0]
+
+    def num(k: str) -> float | None:
+        v = r.get(k)
+        try:
+            return float(v) if v is not None else None
+        except (TypeError, ValueError):
+            return None
+
+    clicks = num("clicks") or 0
+    spend = num("spend") or 0
+    purchases = _sum_action(r.get("actions", []), "value", _PURCHASE_TYPES)
+    revenue = _sum_action(r.get("action_values", []), "value", _PURCHASE_TYPES)
+
+    metrics = {
+        "ctr": num("ctr"),
+        "cpc": num("cpc"),
+        "cpm": num("cpm"),
+        "frequency": num("frequency"),
+        # derived (None when we can't compute — audit shows N/A rather than guessing)
+        "conv_rate": (purchases / clicks * 100) if clicks and purchases else None,
+        "roas": (revenue / spend) if spend and revenue else None,
+    }
+    result = audit_metrics(metrics)
+    return {
+        "available": True,
+        "date_preset": date_preset,
+        "spend": spend,
+        "score": result.score,
+        "assessment": result.assessment,
+        "kpis": [
+            {"key": k.key, "label": k.label,
+             "value": k.value, "display": (k.fmt.format(k.value) if k.value is not None else "N/A"),
+             "grade": k.grade}
+            for k in result.kpis
+        ],
+        "dimensions": [{"name": d.name, "score": d.score, "max": d.max} for d in result.dimensions],
+        "recommendations": result.recommendations,
+    }
 
 
 @router.post("/campaigns/create", response_model=CreateMetaCampaignResult)
