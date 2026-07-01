@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useMetaStatus, useMetaAccount, useMetaCampaigns, useMetaInsights, useSetMetaCampaignStatus, useMetaCampaignAdSets, useSetMetaAdSetStatus, useDeleteMetaCampaign, metaKeys } from "@/hooks/useMeta";
 import { createMetaCampaignShell, createMetaAdSet, searchMetaInterests } from "@/services/meta.service";
 import { CreativePicker } from "@/components/common/CreativePicker";
+import { MetaAuditPanel } from "./MetaAuditPanel";
 import type { MetaCampaign, MetaAdSet, MetaInterest, MetaInsightRow, MetaObjective, CreateMetaCampaignResult, AdSetSpec, CreatedAdSet } from "@/types/meta";
 
 const REGIONS: { code: string; label: string }[] = [
@@ -816,6 +817,8 @@ export function MetaPanel() {
       {showCreate && (
         <CreateMetaCampaignForm currency={currency} onDone={() => setShowCreate(false)} />
       )}
+
+      <MetaAuditPanel />
 
       {/* Campaigns + 7d insights */}
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>

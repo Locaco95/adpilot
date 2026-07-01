@@ -13,7 +13,12 @@ import type {
   CreatedAdSet,
   CreateMetaCampaignRequest,
   CreateMetaCampaignResult,
+  MetaAudit,
 } from "@/types/meta";
+
+export function getMetaAudit(datePreset = "last_7d"): Promise<MetaAudit> {
+  return apiGet<MetaAudit>(`/meta/audit?date_preset=${datePreset}`);
+}
 
 export function getMetaStatus(): Promise<MetaStatus> {
   return apiGet<MetaStatus>("/meta/status");

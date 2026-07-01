@@ -55,6 +55,30 @@ export interface MetaListResponse<T> {
   paging?: unknown;
 }
 
+export type KpiGrade = "Excellent" | "Good" | "Average" | "Below Average" | "Poor";
+
+export interface AuditKpi {
+  key: string;
+  label: string;
+  value: number | null;
+  display: string;   // formatted, e.g. "1.20%" or "N/A"
+  grade: KpiGrade | null;
+}
+
+export interface AuditDimension { name: string; score: number; max: number }
+
+export interface MetaAudit {
+  available: boolean;
+  date_preset: string;
+  message?: string;      // set when available=false
+  spend?: number;
+  score?: number;        // 0-100
+  assessment?: string;
+  kpis?: AuditKpi[];
+  dimensions?: AuditDimension[];
+  recommendations?: { tier1: string[]; tier2: string[]; tier3: string[] };
+}
+
 export type MetaObjective =
   | "OUTCOME_TRAFFIC"
   | "OUTCOME_SALES"
