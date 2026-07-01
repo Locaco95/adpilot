@@ -5,7 +5,7 @@ import yaml
 
 from app.settings import get_settings
 from app.database import engine, Base
-from app.api import auth, overview, campaigns, actions, anomalies, creative, audit, system, snap, snap_create, telegram, meta, settings_api, drive
+from app.api import auth, overview, campaigns, actions, anomalies, creative, audit, system, snap, snap_create, telegram, meta, settings_api, drive, agent
 
 settings = get_settings()
 
@@ -60,6 +60,7 @@ app.include_router(telegram.router,  prefix=PREFIX)
 app.include_router(meta.router,      prefix=PREFIX)
 app.include_router(settings_api.router, prefix=PREFIX)
 app.include_router(drive.router,     prefix=PREFIX)
+app.include_router(agent.router,     prefix=PREFIX)
 
 
 @app.get("/health")

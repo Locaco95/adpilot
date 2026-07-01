@@ -35,11 +35,22 @@ class Interest(BaseModel):
     name: str
 
 
+class AdCreativeSpec(BaseModel):
+    """One ad (creative) under an ad set. Multiple can share the same ad set —
+    the standard way to test creatives against one audience."""
+    creative_file_id: str = Field(..., description="Google Drive file id (OAuth) for the creative.")
+    destination_url: str = Field(..., description="Landing URL for the ad's call-to-action.")
+    headline: str | None = Field(None, max_length=255, description="Ad headline/title.")
+    message: str | None = Field(None, max_length=2200, description="Primary text shown with the ad.")
+    call_to_action: str = Field("LEARN_MORE", description="Meta CTA type, e.g. LEARN_MORE, SHOP_NOW.")
+
+
 class AdSetSpec(BaseModel):
-    """One ad set under the campaign: its own targeting, budget and (optional) ad.
+    """One ad set under the campaign: its own targeting, budget and (optional) ads.
 
     Multiple of these can live under a single campaign — the standard way to
     test regions/audiences side by side (ABO: each ad set owns its budget).
+    Each ad set can itself hold multiple ads (see `ads`).
     """
     country_code: str = Field(..., min_length=2, max_length=2, description="ISO-2, e.g. 'SA'")
     daily_budget: float | None = Field(None, gt=0, description="Per-ad-set budget (ABO). Omit when the campaign holds the budget (CBO).")
@@ -56,18 +67,30 @@ class AdSetSpec(BaseModel):
     start_time: str | None = Field(None, description="ISO-8601 start, e.g. 2026-06-25T09:00:00+0000")
     end_time: str | None = Field(None, description="ISO-8601 end; the ad set auto-stops at this time.")
 
-    # Creative/ad layer (optional, per ad set). When creative_file_id is set, the
-    # media is fetched via services.media_service and a PAUSED ad creative + ad are built.
-    creative_file_id: str | None = Field(None, description="Google Drive file id (OAuth) for the creative.")
-    destination_url: str | None = Field(None, description="Landing URL for the ad's call-to-action.")
-    headline: str | None = Field(None, max_length=255, description="Ad headline/title.")
-    message: str | None = Field(None, max_length=2200, description="Primary text shown with the ad.")
-    call_to_action: str = Field("LEARN_MORE", description="Meta CTA type, e.g. LEARN_MORE, SHOP_NOW.")
+    # Ads under this ad set (optional). Each one becomes a PAUSED creative + ad.
+    ads: list[AdCreativeSpec] = Field(default_factory=list, description="Ads to create under this ad set.")
+
+    # Legacy single-ad fields (still accepted; folded into `ads` when it's empty).
+    creative_file_id: str | None = Field(None, description="Legacy single-ad creative (Google Drive file id).")
+    destination_url: str | None = Field(None, description="Legacy single-ad landing URL.")
+    headline: str | None = Field(None, max_length=255, description="Legacy single-ad headline.")
+    message: str | None = Field(None, max_length=2200, description="Legacy single-ad primary text.")
+    call_to_action: str = Field("LEARN_MORE", description="Legacy single-ad CTA type.")
 
     @model_validator(mode="after")
-    def _creative_needs_destination(self) -> "AdSetSpec":
-        if self.creative_file_id and not self.destination_url:
-            raise ValueError("destination_url is required when a creative_file_id is provided.")
+    def _normalize_ads(self) -> "AdSetSpec":
+        """Fold the legacy flat creative fields into `ads`, and validate each ad."""
+        if not self.ads and self.creative_file_id:
+            self.ads = [AdCreativeSpec(
+                creative_file_id=self.creative_file_id,
+                destination_url=self.destination_url or "",
+                headline=self.headline,
+                message=self.message,
+                call_to_action=self.call_to_action,
+            )]
+        for i, ad in enumerate(self.ads, start=1):
+            if not ad.destination_url:
+                raise ValueError(f"Ad {i}: destination_url is required when a creative is provided.")
         return self
 
 
@@ -128,9 +151,17 @@ class CreateMetaCampaignRequest(BaseModel):
         return self
 
 
+class CreatedAd(BaseModel):
+    ad_id: str
+    creative_id: str
+
+
 class CreatedAdSet(BaseModel):
     ad_set_id: str
     country_code: str
+    ads: list[CreatedAd] = Field(default_factory=list)
+
+    # Back-compat convenience: first ad's ids, so existing UI keeps working.
     creative_id: str | None = None
     ad_id: str | None = None
 
