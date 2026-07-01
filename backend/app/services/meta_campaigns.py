@@ -17,7 +17,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.platforms.meta import get_meta_client
 from app.schemas.meta_create import (
+    AdCreativeSpec,
     AdSetSpec,
+    CreatedAd,
     CreatedAdSet,
     CreateMetaCampaignRequest,
     CreateMetaCampaignResult,
@@ -108,32 +110,54 @@ async def _create_ad_set(
     ad_set = await client.post(f"/{acct}/adsets", data=ad_set_data)
     ad_set_id = ad_set["id"]
 
-    if not spec.creative_file_id:
+    if not spec.ads:
         return CreatedAdSet(ad_set_id=ad_set_id, country_code=spec.country_code.upper())
 
     page_id = s.meta_page_id
     if not page_id:
         raise HTTPException(503, "META_PAGE_ID not configured — required to create ad creatives.")
 
-    cta = {"type": spec.call_to_action, "value": {"link": spec.destination_url}}
+    created_ads: list[CreatedAd] = []
+    for j, ad_spec in enumerate(spec.ads, start=1):
+        created_ads.append(await _create_ad(
+            client, acct, page_id, campaign_name, ad_set_id,
+            ad_spec, index, j, db, media_cache,
+        ))
 
-    media = await _resolve_media(client, acct, db, spec.creative_file_id, media_cache)
+    return CreatedAdSet(
+        ad_set_id=ad_set_id,
+        country_code=spec.country_code.upper(),
+        ads=created_ads,
+        creative_id=created_ads[0].creative_id,
+        ad_id=created_ads[0].ad_id,
+    )
+
+
+async def _create_ad(
+    client, acct: str, page_id: str, campaign_name: str, ad_set_id: str,
+    ad_spec: AdCreativeSpec, set_index: int, ad_index: int,
+    db: AsyncSession, media_cache: dict,
+) -> CreatedAd:
+    """Build one PAUSED creative + ad under an existing ad set."""
+    cta = {"type": ad_spec.call_to_action, "value": {"link": ad_spec.destination_url}}
+
+    media = await _resolve_media(client, acct, db, ad_spec.creative_file_id, media_cache)
     if media[0] == "image":
         object_story_spec = {
             "page_id": page_id,
             "link_data": {
-                "message": spec.message or "",
-                "link": spec.destination_url,
-                "name": spec.headline or "",
+                "message": ad_spec.message or "",
+                "link": ad_spec.destination_url,
+                "name": ad_spec.headline or "",
                 "image_hash": media[1],
                 "call_to_action": cta,
             },
         }
     else:  # video
         video_data = {
-            "message": spec.message or "",
+            "message": ad_spec.message or "",
             "video_id": media[1],
-            "title": spec.headline or "",
+            "title": ad_spec.headline or "",
             "call_to_action": cta,
         }
         if media[2]:
@@ -143,7 +167,7 @@ async def _create_ad_set(
     creative_resp = await client.post(
         f"/{acct}/adcreatives",
         data={
-            "name": f"{campaign_name} creative {index}",
+            "name": f"{campaign_name} creative {set_index}.{ad_index}",
             "object_story_spec": json.dumps(object_story_spec),
         },
     )
@@ -152,18 +176,13 @@ async def _create_ad_set(
     ad_resp = await client.post(
         f"/{acct}/ads",
         data={
-            "name": f"{campaign_name} ad {index}",
+            "name": f"{campaign_name} ad {set_index}.{ad_index}",
             "adset_id": ad_set_id,
             "creative": json.dumps({"creative_id": creative_id}),
             "status": "PAUSED",
         },
     )
-    return CreatedAdSet(
-        ad_set_id=ad_set_id,
-        country_code=spec.country_code.upper(),
-        creative_id=creative_id,
-        ad_id=ad_resp["id"],
-    )
+    return CreatedAd(ad_id=ad_resp["id"], creative_id=creative_id)
 
 
 def _require_acct() -> str:

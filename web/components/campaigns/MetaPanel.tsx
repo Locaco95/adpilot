@@ -14,6 +14,32 @@ const REGIONS: { code: string; label: string }[] = [
   { code: "QA", label: "Qatar" },
   { code: "BH", label: "Bahrain" },
   { code: "OM", label: "Oman" },
+  { code: "JO", label: "Jordan" },
+  { code: "IQ", label: "Iraq" },
+  { code: "LB", label: "Lebanon" },
+  { code: "MA", label: "Morocco" },
+  { code: "DZ", label: "Algeria" },
+  { code: "TN", label: "Tunisia" },
+  { code: "US", label: "United States" },
+  { code: "GB", label: "United Kingdom" },
+  { code: "DE", label: "Germany" },
+  { code: "FR", label: "France" },
+  { code: "TR", label: "Turkey" },
+];
+
+/* Meta call-to-action button types (subset that works across objectives). */
+const CTA_OPTIONS: { value: string; label: string }[] = [
+  { value: "LEARN_MORE", label: "Learn More" },
+  { value: "SHOP_NOW", label: "Shop Now" },
+  { value: "SIGN_UP", label: "Sign Up" },
+  { value: "SUBSCRIBE", label: "Subscribe" },
+  { value: "BOOK_TRAVEL", label: "Book Now" },
+  { value: "CONTACT_US", label: "Contact Us" },
+  { value: "DOWNLOAD", label: "Download" },
+  { value: "GET_OFFER", label: "Get Offer" },
+  { value: "ORDER_NOW", label: "Order Now" },
+  { value: "SEND_MESSAGE", label: "Send Message" },
+  { value: "APPLY_NOW", label: "Apply Now" },
 ];
 
 const OBJECTIVES: { value: MetaObjective; label: string }[] = [
@@ -31,26 +57,37 @@ const inputStyle: React.CSSProperties = {
 };
 const labelStyle: React.CSSProperties = { fontSize: 11, color: "var(--text-tertiary)", marginBottom: 4, display: "block", fontWeight: 600 };
 
+/* One editable ad (creative) inside an ad set. */
+interface AdDraft {
+  creativeFileId: string | null;
+  destinationUrl: string;
+  headline: string;
+  message: string;       // primary text shown with the ad
+  callToAction: string;  // Meta CTA button type
+}
+
+function emptyAd(): AdDraft {
+  return { creativeFileId: null, destinationUrl: "", headline: "", message: "", callToAction: "LEARN_MORE" };
+}
+
 /* One editable ad set in the create form. */
 interface AdSetDraft {
   country: string;
   budget: string;
+  startDate: string; // yyyy-mm-dd (local); "" = starts when activated
   endDate: string; // yyyy-mm-dd (local); "" = no end, runs until paused
   gender: number;  // 0=all, 1=men, 2=women
   language: number; // 0 = all (omit), else a Meta locale key
   ageMin: string;
   ageMax: string;
   interests: { id: string; name: string }[];
-  creativeFileId: string | null;
-  destinationUrl: string;
-  headline: string;
+  ads: AdDraft[]; // 0 = ad-set-only (no ads); N = multiple ads to test
 }
 
 function emptyAdSet(): AdSetDraft {
   return {
-    country: "SA", budget: "100", endDate: "",
-    gender: 0, language: 0, ageMin: "18", ageMax: "65", interests: [],
-    creativeFileId: null, destinationUrl: "", headline: "",
+    country: "SA", budget: "100", startDate: "", endDate: "",
+    gender: 0, language: 0, ageMin: "18", ageMax: "65", interests: [], ads: [],
   };
 }
 
@@ -59,6 +96,12 @@ const LANGUAGES: { key: number; label: string }[] = [
   { key: 28, label: "Arabic" },
   { key: 6, label: "English (US)" },
   { key: 24, label: "English (UK)" },
+  { key: 5, label: "French" },
+  { key: 7, label: "German" },
+  { key: 10, label: "Spanish" },
+  { key: 16, label: "Turkish" },
+  { key: 9, label: "Italian" },
+  { key: 22, label: "Portuguese (Brazil)" },
 ];
 
 /* Debounced interest search → click results to add as chips. */
@@ -129,6 +172,52 @@ function InterestSearch({ selected, onChange }: {
   );
 }
 
+/* One ad (creative) inside an ad set — the Drive creative + its copy. */
+function AdCard({ index, total, draft, onChange, onRemove }: {
+  index: number; total: number; draft: AdDraft;
+  onChange: (d: AdDraft) => void; onRemove: () => void;
+}) {
+  const set = (patch: Partial<AdDraft>) => onChange({ ...draft, ...patch });
+  return (
+    <div style={{ border: "1px dashed var(--border-subtle)", borderRadius: "var(--radius-sm)", padding: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)" }}>Ad {index + 1}</span>
+        {total > 1 && (
+          <button onClick={onRemove}
+            style={{ background: "transparent", border: "none", color: "var(--danger)", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+            Remove
+          </button>
+        )}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div>
+          <label style={labelStyle}>Creative — from Google Drive</label>
+          <CreativePicker selectedFileId={draft.creativeFileId} onSelect={(id) => set({ creativeFileId: id })} />
+        </div>
+        <div>
+          <label style={labelStyle}>Destination URL (required)</label>
+          <input style={inputStyle} value={draft.destinationUrl} onChange={(e) => set({ destinationUrl: e.target.value })} placeholder="https://store.example.com/product" />
+        </div>
+        <div>
+          <label style={labelStyle}>Headline (optional)</label>
+          <input style={inputStyle} maxLength={255} value={draft.headline} onChange={(e) => set({ headline: e.target.value })} placeholder="Shop the collection" />
+        </div>
+        <div>
+          <label style={labelStyle}>Primary text (optional — main text above the ad)</label>
+          <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 60 }} maxLength={2200} value={draft.message}
+            onChange={(e) => set({ message: e.target.value })} placeholder="Tell people what makes this worth their tap." />
+        </div>
+        <div>
+          <label style={labelStyle}>Call to action button</label>
+          <select style={inputStyle} value={draft.callToAction} onChange={(e) => set({ callToAction: e.target.value })}>
+            {CTA_OPTIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+          </select>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AdSetCard({ index, total, draft, onChange, onRemove, currency, showBudget }: {
   index: number; total: number; draft: AdSetDraft;
   onChange: (d: AdSetDraft) => void; onRemove: () => void; currency: string; showBudget: boolean;
@@ -158,8 +247,12 @@ function AdSetCard({ index, total, draft, onChange, onRemove, currency, showBudg
             <input style={inputStyle} type="number" value={draft.budget} onChange={(e) => set({ budget: e.target.value })} />
           </div>
         )}
-        <div style={{ gridColumn: "1 / -1" }}>
-          <label style={labelStyle}>End date (optional — auto-stops; leave empty to run until paused)</label>
+        <div>
+          <label style={labelStyle}>Start date (optional — leave empty to start when activated)</label>
+          <input style={inputStyle} type="date" value={draft.startDate} onChange={(e) => set({ startDate: e.target.value })} />
+        </div>
+        <div>
+          <label style={labelStyle}>End date (optional — auto-stops; empty = until paused)</label>
           <input style={inputStyle} type="date" value={draft.endDate} onChange={(e) => set({ endDate: e.target.value })} />
         </div>
 
@@ -190,24 +283,27 @@ function AdSetCard({ index, total, draft, onChange, onRemove, currency, showBudg
           <label style={labelStyle}>Interests (optional — narrows to relevant people)</label>
           <InterestSearch selected={draft.interests} onChange={(next) => set({ interests: next })} />
         </div>
-
-        <div style={{ gridColumn: "1 / -1" }}>
-          <label style={labelStyle}>Creative — from Google Drive (optional)</label>
-          <CreativePicker selectedFileId={draft.creativeFileId} onSelect={(id) => set({ creativeFileId: id })} />
-        </div>
-        {draft.creativeFileId && (
-          <>
-            <div style={{ gridColumn: "1 / -1" }}>
-              <label style={labelStyle}>Destination URL (required for the ad)</label>
-              <input style={inputStyle} value={draft.destinationUrl} onChange={(e) => set({ destinationUrl: e.target.value })} placeholder="https://store.example.com/product" />
-            </div>
-            <div style={{ gridColumn: "1 / -1" }}>
-              <label style={labelStyle}>Headline (optional)</label>
-              <input style={inputStyle} maxLength={255} value={draft.headline} onChange={(e) => set({ headline: e.target.value })} placeholder="Shop the collection" />
-            </div>
-          </>
-        )}
       </div>
+
+      {/* Ads under this ad set — add several to test creatives against one audience. */}
+      <div style={{ marginTop: 14 }}>
+        <label style={labelStyle}>Ads (optional — add creatives from Google Drive to test against this audience)</label>
+        {draft.ads.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 10 }}>
+            {draft.ads.map((ad, ai) => (
+              <AdCard key={ai} index={ai} total={draft.ads.length} draft={ad}
+                onChange={(d) => set({ ads: draft.ads.map((x, xi) => (xi === ai ? d : x)) })}
+                onRemove={() => set({ ads: draft.ads.filter((_, xi) => xi !== ai) })} />
+            ))}
+          </div>
+        )}
+        <button onClick={() => set({ ads: [...draft.ads, emptyAd()] })}
+          style={{ ...inputStyle, width: "auto", cursor: "pointer", fontWeight: 600,
+            background: "transparent", border: "1px dashed var(--border-subtle)", color: "var(--text-secondary)" }}>
+          + Add ad
+        </button>
+      </div>
+
       <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 8 }}>Created PAUSED</div>
     </div>
   );
@@ -247,11 +343,18 @@ function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone
       ...(a.gender ? { gender: a.gender } : {}),
       ...(a.language ? { languages: [a.language] } : {}),
       ...(a.interests.length ? { interests: a.interests } : {}),
+      ...(a.startDate ? { start_time: new Date(`${a.startDate}T00:00:00`).toISOString() } : {}),
       ...(a.endDate ? { end_time: new Date(`${a.endDate}T23:59:59`).toISOString() } : {}),
-      ...(a.creativeFileId ? {
-        creative_file_id: a.creativeFileId,
-        destination_url: a.destinationUrl.trim(),
-        headline: a.headline.trim() || undefined,
+      ...(a.ads.length ? {
+        ads: a.ads
+          .filter((ad) => ad.creativeFileId)
+          .map((ad) => ({
+            creative_file_id: ad.creativeFileId as string,
+            destination_url: ad.destinationUrl.trim(),
+            headline: ad.headline.trim() || undefined,
+            message: ad.message.trim() || undefined,
+            call_to_action: ad.callToAction,
+          })),
       } : {}),
     };
   }
@@ -265,7 +368,8 @@ function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone
     for (let pos = 0; pos < indexes.length; pos++) {
       const i = indexes[pos];
       const a = adSets[i];
-      setProgress(`Creating ad set ${pos + 1} of ${indexes.length}${a.creativeFileId ? " (uploading creative…)" : ""}`);
+      const adCount = a.ads.filter((ad) => ad.creativeFileId).length;
+      setProgress(`Creating ad set ${pos + 1} of ${indexes.length}${adCount ? ` (uploading ${adCount} creative${adCount > 1 ? "s" : ""}…)` : ""}`);
       try {
         made.push(await createMetaAdSet(cid, buildSpec(a), { index: i + 1, name: name.trim(), objective }));
       } catch (e) {
@@ -289,7 +393,11 @@ function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone
         const b = Number(a.budget);
         if (!b || b <= 0) { setError(`Ad set ${i + 1}: enter a daily budget.`); return; }
       }
-      if (a.creativeFileId && !a.destinationUrl.trim()) { setError(`Ad set ${i + 1}: add a destination URL for the creative.`); return; }
+      for (let j = 0; j < a.ads.length; j++) {
+        const ad = a.ads[j];
+        if (!ad.creativeFileId) { setError(`Ad set ${i + 1}, ad ${j + 1}: pick a creative or remove the ad.`); return; }
+        if (!ad.destinationUrl.trim()) { setError(`Ad set ${i + 1}, ad ${j + 1}: add a destination URL.`); return; }
+      }
     }
     setSubmitting(true);
     setAdSetErrors([]);
@@ -350,8 +458,9 @@ function CreateMetaCampaignForm({ currency, onDone }: { currency: string; onDone
           {result.ad_sets.map((a, i) => (
             <div key={a.ad_set_id} style={{ marginTop: i ? 6 : 4 }}>
               <div>ad set {i + 1} ({a.country_code}): {a.ad_set_id}</div>
-              {a.creative_id && <div>  creative: {a.creative_id}</div>}
-              {a.ad_id && <div>  ad: {a.ad_id}</div>}
+              {(a.ads ?? []).map((ad, j) => (
+                <div key={ad.ad_id}>  ad {j + 1}: {ad.ad_id} (creative {ad.creative_id})</div>
+              ))}
             </div>
           ))}
         </div>

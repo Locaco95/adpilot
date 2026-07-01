@@ -69,6 +69,14 @@ export interface MetaInterest {
   path?: string | null;
 }
 
+export interface AdCreativeSpec {
+  creative_file_id: string;
+  destination_url: string;
+  headline?: string;
+  message?: string;
+  call_to_action?: string;
+}
+
 export interface AdSetSpec {
   country_code: string;
   daily_budget?: number; // omit in CBO (campaign holds the budget)
@@ -79,12 +87,8 @@ export interface AdSetSpec {
   interests?: { id: string; name: string }[];
   start_time?: string; // ISO-8601; omit => starts when activated
   end_time?: string;   // ISO-8601; omit => runs until paused
-  // Optional creative/ad layer (media via Google Drive OAuth)
-  creative_file_id?: string;
-  destination_url?: string;
-  headline?: string;
-  message?: string;
-  call_to_action?: string;
+  // Ads under this ad set (media via Google Drive OAuth)
+  ads?: AdCreativeSpec[];
 }
 
 export interface CreateMetaCampaignRequest {
@@ -94,9 +98,16 @@ export interface CreateMetaCampaignRequest {
   ad_sets: AdSetSpec[];
 }
 
+export interface CreatedAd {
+  ad_id: string;
+  creative_id: string;
+}
+
 export interface CreatedAdSet {
   ad_set_id: string;
   country_code: string;
+  ads?: CreatedAd[];
+  // Back-compat: first ad's ids
   creative_id?: string | null;
   ad_id?: string | null;
 }

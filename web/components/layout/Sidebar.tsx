@@ -28,6 +28,11 @@ const ICONS = {
       <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
     </svg>
   ),
+  assistant: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>
+  ),
   telegram: (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.86 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.77 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
@@ -42,6 +47,7 @@ const ICONS = {
 };
 
 const NAV_ITEMS = [
+  { id: "assistant", icon: ICONS.assistant, label: "Assistant",    href: "/assistant" },
   { id: "overview",  icon: ICONS.overview,  label: "Overview",     href: "/overview" },
   { id: "actions",   icon: ICONS.actions,   label: "Actions",      href: "/actions",   badge: 3 },
   { id: "campaigns", icon: ICONS.campaigns, label: "Campaigns",    href: "/campaigns" },
