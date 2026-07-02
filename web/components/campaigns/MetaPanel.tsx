@@ -5,6 +5,7 @@ import { useMetaStatus, useMetaAccount, useMetaCampaigns, useMetaInsights, useSe
 import { createMetaCampaignShell, createMetaAdSet, searchMetaInterests } from "@/services/meta.service";
 import { CreativePicker } from "@/components/common/CreativePicker";
 import { MetaAuditPanel } from "./MetaAuditPanel";
+import { MetaOptimizerPanel } from "./MetaOptimizerPanel";
 import type { MetaCampaign, MetaAdSet, MetaInterest, MetaInsightRow, MetaObjective, CreateMetaCampaignResult, AdSetSpec, CreatedAdSet } from "@/types/meta";
 
 const REGIONS: { code: string; label: string }[] = [
@@ -819,6 +820,8 @@ export function MetaPanel() {
       )}
 
       <MetaAuditPanel />
+
+      <MetaOptimizerPanel />
 
       {/* Campaigns + 7d insights */}
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>

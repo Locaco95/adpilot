@@ -295,6 +295,26 @@ async def delete_campaign(campaign_id: str) -> dict:
     return {"campaign_id": campaign_id, "deleted": True}
 
 
+async def scale_adset_budget(adset_id: str, pct: float) -> dict:
+    """Increase (or decrease) an ad set's daily budget by `pct` percent.
+
+    Reads the current daily_budget (minor units) and writes the new value. Only
+    works for ABO ad sets (those that own a budget); CBO budgets live on the
+    campaign and Meta returns an error, which surfaces to the caller.
+    """
+    client = get_meta_client()
+    cur = await client.get(f"/{adset_id}", params={"fields": "daily_budget,name"})
+    current = int(cur.get("daily_budget") or 0)
+    if current <= 0:
+        raise HTTPException(400, "Ad set has no daily budget (likely CBO) — scale the campaign instead.")
+    new_budget = int(round(current * (1 + pct / 100.0)))
+    await client.post(f"/{adset_id}", data={"daily_budget": str(new_budget)})
+    return {
+        "ad_set_id": adset_id, "name": cur.get("name"),
+        "old_daily_budget": current, "new_daily_budget": new_budget, "pct": pct,
+    }
+
+
 async def set_adset_status(adset_id: str, status: str) -> dict:
     """Set a single ad set and its ads to ACTIVE or PAUSED.
 

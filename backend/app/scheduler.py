@@ -45,6 +45,16 @@ async def daily_digest():
     logger.info("daily_digest: stub — Week 5 implementation")
 
 
+async def optimizer_pass():
+    """Every hour — evaluate ad sets and execute/queue actions (if enabled)."""
+    from app.services.optimizer_runner import run_once
+    try:
+        result = await run_once()
+        logger.info("optimizer_pass: %s", result)
+    except Exception:
+        logger.exception("optimizer_pass failed")
+
+
 def start_scheduler():
     if scheduler.running:
         return
@@ -55,9 +65,10 @@ def start_scheduler():
     scheduler.add_job(expire_pending_actions,  IntervalTrigger(minutes=1),  id="expire",       max_instances=1)
     scheduler.add_job(commit_revocable_actions, IntervalTrigger(seconds=30), id="commit_revocable", max_instances=1)
     scheduler.add_job(daily_digest,            CronTrigger(hour=5, minute=0), id="daily_digest", max_instances=1)
+    scheduler.add_job(optimizer_pass,          IntervalTrigger(hours=1),    id="optimizer",    max_instances=1)
 
     scheduler.start()
-    logger.info("APScheduler started with 6 jobs")
+    logger.info("APScheduler started with 7 jobs")
 
 
 def stop_scheduler():

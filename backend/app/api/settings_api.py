@@ -1,10 +1,10 @@
-"""Settings endpoints — currently the LLM model the Telegram agent uses."""
+"""Settings endpoints — LLM model + optimizer config/kill-switch."""
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import get_db, get_current_user
-from app.services import llm_models
+from app.services import llm_models, optimizer_config
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -37,3 +37,39 @@ async def set_llm_model(
         raise HTTPException(422, f"Unknown model: {body.model}")
     await llm_models.set_current_model(db, body.model, actor=user.get("sub", "operator"))
     return LLMModelOut(current=body.model, options=llm_models.MODEL_OPTIONS)
+
+
+# ── optimizer config + master kill switch ────────────────────────────────────
+class OptimizerConfigPatch(BaseModel):
+    enabled: bool | None = None
+    auto_execute: bool | None = None
+    breakeven_roas: float | None = None
+    target_cpa: float | None = None
+    human_approval_spend_threshold: float | None = None
+
+
+@router.get("/optimizer")
+async def get_optimizer_config(
+    db: AsyncSession = Depends(get_db),
+    _user=Depends(get_current_user),
+):
+    return await optimizer_config.get_config(db)
+
+
+@router.post("/optimizer")
+async def update_optimizer_config(
+    body: OptimizerConfigPatch,
+    db: AsyncSession = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    patch = {k: v for k, v in body.model_dump().items() if v is not None}
+    if not patch:
+        raise HTTPException(422, "No fields to update.")
+    return await optimizer_config.set_config(db, patch, actor=user.get("sub", "operator"))
+
+
+@router.post("/optimizer/run")
+async def run_optimizer_now(_user=Depends(get_current_user)):
+    """Trigger one optimizer pass immediately (respects enabled + kill switch)."""
+    from app.services.optimizer_runner import run_once
+    return await run_once()
