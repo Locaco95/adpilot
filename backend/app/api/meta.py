@@ -148,6 +148,36 @@ def _sum_action(rows: list[dict], key: str, action_types: tuple[str, ...]) -> fl
 _PURCHASE_TYPES = ("purchase", "omni_purchase", "offsite_conversion.fb_pixel_purchase")
 
 
+@router.get("/optimizer/recommendations")
+async def optimizer_recommendations(
+    date_preset: str = Query("last_7d"),
+    _user=Depends(get_current_user),
+):
+    """Run the deterministic decision engine over every active ad set and return
+    the recommendations. READ-ONLY — nothing is executed here (v1). Config uses
+    placeholder defaults until the settings panel is wired."""
+    from app.analytics.optimizer import AccountConfig, evaluate
+    from app.services.optimizer_data import build_adset_snapshots
+
+    # ponytail: placeholder config until a settings panel stores real values.
+    cfg = AccountConfig(
+        breakeven_roas=1.5,
+        target_cpa=10.0,
+        currency="EGP",
+        human_approval_spend_threshold=1_000.0,
+    )
+    snapshots = await build_adset_snapshots(date_preset)
+    recs = [evaluate(sn, cfg).to_json() for sn in snapshots]
+    return {
+        "date_preset": date_preset,
+        "config": {"breakeven_roas": cfg.breakeven_roas, "target_cpa": cfg.target_cpa,
+                   "currency": cfg.currency, "approval_threshold": cfg.human_approval_spend_threshold},
+        "count": len(recs),
+        "recommendations": recs,
+        "note": "Read-only preview — no actions are executed. Trend/history rules await day-by-day data.",
+    }
+
+
 @router.get("/audit")
 async def audit(
     date_preset: str = Query("last_7d"),

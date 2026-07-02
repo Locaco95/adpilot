@@ -20,6 +20,52 @@ export function getMetaAudit(datePreset = "last_7d"): Promise<MetaAudit> {
   return apiGet<MetaAudit>(`/meta/audit?date_preset=${datePreset}`);
 }
 
+/* ── Optimizer (deterministic decision engine) ── */
+export interface OptimizerRec {
+  entity_id: string;
+  entity_name: string;
+  metrics_snapshot: Record<string, unknown>;
+  gate_check: string;
+  diagnosis: string;
+  matched_rule: string;
+  recommended_action: "KILL" | "SCALE" | "HOLD" | "REFRESH_CREATIVE" | "PAUSE" | "DUPLICATE_WINNER";
+  confidence: "high" | "medium" | "low";
+  human_approval_required: boolean;
+}
+
+export interface OptimizerRecsResponse {
+  date_preset: string;
+  config: { breakeven_roas: number; target_cpa: number; currency: string; approval_threshold: number };
+  count: number;
+  recommendations: OptimizerRec[];
+  note: string;
+}
+
+export interface OptimizerConfig {
+  enabled: boolean;
+  auto_execute: boolean;
+  breakeven_roas: number;
+  target_cpa: number;
+  currency: string;
+  human_approval_spend_threshold: number;
+}
+
+export function getOptimizerRecs(datePreset = "last_7d"): Promise<OptimizerRecsResponse> {
+  return apiGet<OptimizerRecsResponse>(`/meta/optimizer/recommendations?date_preset=${datePreset}`);
+}
+
+export function getOptimizerConfig(): Promise<OptimizerConfig> {
+  return apiGet<OptimizerConfig>("/settings/optimizer");
+}
+
+export function setOptimizerConfig(patch: Partial<OptimizerConfig>): Promise<OptimizerConfig> {
+  return apiPost<OptimizerConfig>("/settings/optimizer", patch);
+}
+
+export function runOptimizerNow(): Promise<Record<string, unknown>> {
+  return apiPost<Record<string, unknown>>("/settings/optimizer/run", {}, 120_000);
+}
+
 export function getMetaStatus(): Promise<MetaStatus> {
   return apiGet<MetaStatus>("/meta/status");
 }
