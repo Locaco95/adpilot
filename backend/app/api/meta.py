@@ -166,7 +166,12 @@ async def optimizer_recommendations(
         currency="EGP",
         human_approval_spend_threshold=1_000.0,
     )
-    snapshots = await build_adset_snapshots(date_preset)
+    try:
+        snapshots = await build_adset_snapshots(date_preset)
+    except MetaAuthError as e:
+        raise HTTPException(503, f"Meta auth error: {e}")
+    except HTTPStatusError as e:
+        raise HTTPException(e.response.status_code, f"Meta API error: {e.response.text[:400]}")
     recs = [evaluate(sn, cfg).to_json() for sn in snapshots]
     return {
         "date_preset": date_preset,

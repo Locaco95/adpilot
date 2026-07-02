@@ -52,14 +52,16 @@ async def build_adset_snapshots(date_preset: str = "last_7d") -> list[EntitySnap
     )
     by_id = {a["id"]: a for a in meta.get("data", [])}
 
-    # ad-set-level insights for the window
+    # ad-set-level insights for the window. video_3_sec_watched_actions is not
+    # valid on every API version/account, so it's requested separately and its
+    # failure degrades to "no hook rate" rather than 500-ing the whole call.
     ins = await client.get(
         f"/{acct}/insights",
         params={
             "level": "adset",
             "date_preset": date_preset,
             "fields": ("adset_id,adset_name,spend,impressions,clicks,ctr,cpm,frequency,"
-                       "actions,action_values,video_3_sec_watched_actions"),
+                       "actions,action_values"),
             "limit": 200,
         },
     )
@@ -72,10 +74,8 @@ async def build_adset_snapshots(date_preset: str = "last_7d") -> list[EntitySnap
             continue
 
         spend = float(row.get("spend", 0) or 0)
-        impressions = float(row.get("impressions", 0) or 0)
         purchases = _sum_actions(row.get("actions"), _PURCHASE_TYPES)
         revenue = _sum_actions(row.get("action_values"), _PURCHASE_TYPES)
-        v3 = _sum_actions(row.get("video_3_sec_watched_actions"), ("video_view",))
 
         snapshots.append(EntitySnapshot(
             entity_id=aid,
@@ -88,8 +88,7 @@ async def build_adset_snapshots(date_preset: str = "last_7d") -> list[EntitySnap
             frequency=float(row["frequency"]) if row.get("frequency") is not None else None,
             conversions=int(purchases),
             days_running=_days_running(md.get("created_time")),
-            hook_rate=(v3 / impressions) if impressions and v3 else None,
-            # trend + history fields need day-by-day storage / edit log — not wired yet.
-            # Left None/0 → engine treats them as unavailable and won't fire those rules.
+            # hook_rate + trend + history fields need extra data not wired yet →
+            # left None so the engine treats them as unavailable (no false rules).
         ))
     return snapshots
