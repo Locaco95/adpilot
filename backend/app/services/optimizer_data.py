@@ -23,7 +23,8 @@ _VIDEO_VIEW_TYPES = ("video_view",)
 # Insights fields we ask Meta for. Optional/fragile ones are tried and degrade
 # to "unavailable" per-metric rather than failing the whole pull.
 _BASE_FIELDS = "adset_id,adset_name,spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,action_values"
-_OPTIONAL_FIELDS = "video_3_sec_watched_actions,video_p50_watched_actions,video_thruplay_watched_actions"
+# Correct v21 video field names (verified against the live account 2026-07-03).
+_OPTIONAL_FIELDS = "video_play_actions,video_p50_watched_actions,video_thruplay_watched_actions"
 
 
 def _sum_actions(rows: list[dict] | None, types: tuple[str, ...]) -> float:
@@ -56,7 +57,7 @@ def _extract_metrics(row: dict) -> dict[str, float | None]:
     atc = _sum_actions(row.get("actions"), _ATC_TYPES)
     checkout = _sum_actions(row.get("actions"), _CHECKOUT_TYPES)
     lpv = _sum_actions(row.get("actions"), _LPV_TYPES)
-    v3 = _sum_actions(row.get("video_3_sec_watched_actions"), _VIDEO_VIEW_TYPES)
+    plays = _sum_actions(row.get("video_play_actions"), _VIDEO_VIEW_TYPES)
     v50 = _sum_actions(row.get("video_p50_watched_actions"), _VIDEO_VIEW_TYPES)
     thru = _sum_actions(row.get("video_thruplay_watched_actions"), _VIDEO_VIEW_TYPES)
 
@@ -77,7 +78,7 @@ def _extract_metrics(row: dict) -> dict[str, float | None]:
         "cost_per_atc": (spend / atc) if atc else None,
         "initiate_checkout": checkout or None,
         "landing_page_views": lpv or None,
-        "hook_rate": (v3 / impressions) if impressions and v3 else None,
+        "hook_rate": (plays / impressions) if impressions and plays else None,
         "hold_rate": (thru / impressions) if impressions and thru else None,
         "video_p50": v50 or None,
         # trend metrics need day-by-day history — not stored yet
