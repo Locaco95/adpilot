@@ -2,7 +2,8 @@
 import { useEffect, useState } from "react";
 import {
   getOptimizerConfig, setOptimizerConfig, runAiMediaBuyer,
-  type OptimizerConfig, type AiRecommendation,
+  getAiMemory, runAiSelfReview,
+  type OptimizerConfig, type AiRecommendation, type AiMemory,
 } from "@/services/meta.service";
 
 const ACTION_COLOR: Record<string, string> = {
@@ -21,8 +22,18 @@ export function AiMediaBuyerPanel() {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
+  const [memory, setMemory] = useState<AiMemory | null>(null);
+  const [reviewing, setReviewing] = useState(false);
 
   useEffect(() => { getOptimizerConfig().then(setCfg).catch((e) => setError((e as Error).message)); }, []);
+  useEffect(() => { getAiMemory().then(setMemory).catch(() => {}); }, []);
+
+  async function selfReview() {
+    setReviewing(true); setError(null);
+    try { await runAiSelfReview(); setMemory(await getAiMemory()); }
+    catch (e) { setError((e as Error).message); }
+    finally { setReviewing(false); }
+  }
 
   async function patch(p: Partial<OptimizerConfig>) {
     if (!cfg) return;
@@ -92,6 +103,33 @@ export function AiMediaBuyerPanel() {
           ⚠ AI + Auto-execute are ON — it will act on live ad sets hourly within your limits.
         </div>
       )}
+
+      {/* learning / memory */}
+      <div style={{ marginTop: 16, padding: 12, background: "var(--bg-input)", borderRadius: "var(--radius-sm)", border: "1px solid var(--border-subtle)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700 }}>Learning memory</div>
+            <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
+              {memory ? `${memory.decision_count} decisions remembered · ${memory.lessons.length} lessons` : "…"} · auto-reviews weekly
+            </div>
+          </div>
+          <button onClick={selfReview} disabled={reviewing}
+            style={{ background: "transparent", border: "1px solid var(--border-default)", borderRadius: "var(--radius-sm)",
+              padding: "6px 12px", color: "var(--text-secondary)", fontSize: 12, fontWeight: 600, cursor: reviewing ? "default" : "pointer" }}>
+            {reviewing ? "Reviewing…" : "Review now"}
+          </button>
+        </div>
+        {memory && memory.lessons.length > 0 && (
+          <ul style={{ margin: "8px 0 0", paddingLeft: 18, display: "flex", flexDirection: "column", gap: 3 }}>
+            {memory.lessons.map((l, i) => <li key={i} style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.5 }}>{l}</li>)}
+          </ul>
+        )}
+        {memory && memory.lessons.length === 0 && (
+          <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 6 }}>
+            No lessons yet — the AI accumulates them from decisions + outcomes over time. Value grows with data.
+          </div>
+        )}
+      </div>
 
       {summary && <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 12 }}>{summary}</div>}
       {error && <div style={{ fontSize: 12, color: "var(--danger)", marginTop: 12 }}>{error}</div>}

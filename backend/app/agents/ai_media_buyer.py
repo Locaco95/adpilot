@@ -105,19 +105,53 @@ def _entities_payload(entities: list[dict]) -> str:
     return "\n".join(lines)
 
 
-async def analyze(entities: list[dict], cfg: dict, model: str | None = None) -> list[dict]:
-    """Return one recommendation dict per ad set. On any failure, returns []."""
+async def analyze(entities: list[dict], cfg: dict, model: str | None = None,
+                  history: str = "") -> list[dict]:
+    """Return one recommendation dict per ad set. On any failure, returns [].
+
+    `history` is this account's decision→outcome track record + lessons (from
+    ai_memory) — injected so the AI reasons with its own past. Empty when new."""
     if not entities:
         return []
+    user = "Analyze these ad sets and return the JSON array of recommendations:\n\n" + _entities_payload(entities)
+    if history:
+        user += "\n\n--- YOUR TRACK RECORD IN THIS ACCOUNT ---\n" + history
     messages = [
         {"role": "system", "content": build_system_prompt(cfg)},
-        {"role": "user", "content":
-            "Analyze these ad sets and return the JSON array of recommendations:\n\n"
-            + _entities_payload(entities)},
+        {"role": "user", "content": user},
     ]
     resp = await llm.chat(messages, model=model)
     content = (resp.get("content") or "").strip()
     return _parse(content, entities)
+
+
+REVIEW_PROMPT = """You are a senior media buyer reviewing YOUR OWN past decisions on this \
+ad account to get better. Below is a history of decisions you made and what the metrics did \
+afterward. Distill 3-6 SHORT, concrete lessons for THIS account — patterns worth remembering \
+(e.g. "scaling above 30% here spiked CPA within 2 days" or "FLAG_FUNNEL ad sets never recovered \
+without a page fix"). Only lessons the data actually supports; if the data is too thin, say so \
+and return fewer. Return STRICT JSON: {"lessons": ["...", "..."]}"""
+
+
+async def self_review(history: str, model: str | None = None) -> list[str]:
+    """Ask the model to distill lessons from its own decision→outcome history."""
+    if not history.strip():
+        return []
+    resp = await llm.chat(
+        [{"role": "system", "content": REVIEW_PROMPT},
+         {"role": "user", "content": history}],
+        model=model,
+    )
+    content = (resp.get("content") or "").strip()
+    s, e = content.find("{"), content.rfind("}")
+    if s == -1 or e == -1:
+        return []
+    try:
+        data = json.loads(content[s:e + 1])
+    except json.JSONDecodeError:
+        return []
+    lessons = data.get("lessons", [])
+    return [str(l).strip() for l in lessons if isinstance(l, str) and l.strip()][:6]
 
 
 def _parse(content: str, entities: list[dict]) -> list[dict]:

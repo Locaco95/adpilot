@@ -99,3 +99,26 @@ async def run_ai_media_buyer_now(
     from app.services.ai_media_buyer_runner import run_once
     model = await llm_models.get_current_model(db)
     return await run_once(model=model)
+
+
+@router.get("/ai-media-buyer/memory")
+async def ai_media_buyer_memory(
+    db: AsyncSession = Depends(get_db),
+    _user=Depends(get_current_user),
+):
+    """The AI's accumulated lessons + recent decision→outcome history."""
+    from app.services import ai_memory
+    mem = await ai_memory._load(db)
+    return {"lessons": mem.get("lessons", []),
+            "decision_count": sum(len(v) for v in mem.get("decisions", {}).values())}
+
+
+@router.post("/ai-media-buyer/self-review")
+async def ai_media_buyer_self_review(
+    db: AsyncSession = Depends(get_db),
+    _user=Depends(get_current_user),
+):
+    """Run the weekly self-review now — distill lessons from past outcomes."""
+    from app.services.ai_media_buyer_runner import run_self_review
+    model = await llm_models.get_current_model(db)
+    return await run_self_review(model=model)
