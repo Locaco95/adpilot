@@ -65,6 +65,22 @@ async def optimizer_pass():
         logger.exception("optimizer_pass failed")
 
 
+async def ai_weekly_review():
+    """Weekly — the AI distills lessons from its own decision→outcome history."""
+    try:
+        from app.database import AsyncSessionLocal
+        from app.services import optimizer_config, llm_models
+        from app.services.ai_media_buyer_runner import run_self_review
+        async with AsyncSessionLocal() as db:
+            cfg = await optimizer_config.get_config(db)
+            model = await llm_models.get_current_model(db)
+        if cfg.get("ai_enabled"):
+            result = await run_self_review(model=model)
+            logger.info("ai_weekly_review: %s", result)
+    except Exception:
+        logger.exception("ai_weekly_review failed")
+
+
 def start_scheduler():
     if scheduler.running:
         return
@@ -76,9 +92,10 @@ def start_scheduler():
     scheduler.add_job(commit_revocable_actions, IntervalTrigger(seconds=30), id="commit_revocable", max_instances=1)
     scheduler.add_job(daily_digest,            CronTrigger(hour=5, minute=0), id="daily_digest", max_instances=1)
     scheduler.add_job(optimizer_pass,          IntervalTrigger(hours=1),    id="optimizer",    max_instances=1)
+    scheduler.add_job(ai_weekly_review,        CronTrigger(day_of_week="mon", hour=3, minute=0), id="ai_review", max_instances=1)
 
     scheduler.start()
-    logger.info("APScheduler started with 7 jobs")
+    logger.info("APScheduler started with 8 jobs")
 
 
 def stop_scheduler():

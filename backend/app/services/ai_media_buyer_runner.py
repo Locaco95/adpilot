@@ -12,7 +12,7 @@ import logging
 from app.agents import ai_media_buyer
 from app.database import AsyncSessionLocal
 from app.models import Action, AuditLog
-from app.services import meta_campaigns, optimizer_config
+from app.services import meta_campaigns, optimizer_config, ai_memory
 from app.services.optimizer_data import build_adset_metrics
 
 logger = logging.getLogger("adpilot.ai_media_buyer")
@@ -59,7 +59,16 @@ async def run_once(model: str | None = None) -> dict:
             return {"ran": False, "reason": "AI media buyer disabled", "recommendations": []}
 
         entities = await build_adset_metrics()
-        recs = await ai_media_buyer.analyze(entities, cfg, model=model)
+        metrics_by_id = {e["entity_id"]: e.get("metrics", {}) for e in entities}
+        ids = [e["entity_id"] for e in entities]
+
+        # 1) record how metrics moved since the last decisions (the "outcome")
+        await ai_memory.update_outcomes(db, metrics_by_id)
+        # 2) feed this account's track record + lessons into the analysis
+        history = await ai_memory.get_history_prompt(db, ids)
+        recs = await ai_media_buyer.analyze(entities, cfg, model=model, history=history)
+        # 3) remember today's decisions with the metrics snapshot
+        await ai_memory.record_decisions(db, recs, metrics_by_id)
 
         auto = bool(cfg.get("auto_execute"))
         executed, queued = 0, 0
@@ -96,3 +105,16 @@ async def run_once(model: str | None = None) -> dict:
         await db.commit()
         return {"ran": True, "auto_execute": auto, "evaluated": len(entities),
                 "executed": executed, "queued": queued, "recommendations": recs}
+
+
+async def run_self_review(model: str | None = None) -> dict:
+    """Weekly: the AI reviews its own decision→outcome history and distills
+    lessons it carries forward. Grows more useful as history accumulates."""
+    async with AsyncSessionLocal() as db:
+        entities = await build_adset_metrics()
+        ids = [e["entity_id"] for e in entities]
+        history = await ai_memory.get_history_prompt(db, ids)
+        lessons = await ai_media_buyer.self_review(history, model=model)
+        if lessons:
+            await ai_memory.add_lessons(db, lessons)
+        return {"lessons_added": len(lessons), "lessons": lessons}

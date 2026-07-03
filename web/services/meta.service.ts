@@ -89,6 +89,16 @@ export function runAiMediaBuyer(): Promise<AiRunResponse> {
   return apiPost<AiRunResponse>("/settings/ai-media-buyer/run", {}, 120_000);
 }
 
+export interface AiMemory { lessons: string[]; decision_count: number }
+
+export function getAiMemory(): Promise<AiMemory> {
+  return apiGet<AiMemory>("/settings/ai-media-buyer/memory");
+}
+
+export function runAiSelfReview(): Promise<{ lessons_added: number; lessons: string[] }> {
+  return apiPost("/settings/ai-media-buyer/self-review", {}, 120_000);
+}
+
 export interface MetricDef {
   key: string;
   label: string;
