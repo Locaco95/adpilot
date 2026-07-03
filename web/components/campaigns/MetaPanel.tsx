@@ -6,6 +6,7 @@ import { createMetaCampaignShell, createMetaAdSet, searchMetaInterests } from "@
 import { CreativePicker } from "@/components/common/CreativePicker";
 import { MetaAuditPanel } from "./MetaAuditPanel";
 import { MetaOptimizerPanel } from "./MetaOptimizerPanel";
+import { AiMediaBuyerPanel } from "./AiMediaBuyerPanel";
 import type { MetaCampaign, MetaAdSet, MetaInterest, MetaInsightRow, MetaObjective, CreateMetaCampaignResult, AdSetSpec, CreatedAdSet } from "@/types/meta";
 
 const REGIONS: { code: string; label: string }[] = [
@@ -820,6 +821,8 @@ export function MetaPanel() {
       )}
 
       <MetaAuditPanel />
+
+      <AiMediaBuyerPanel />
 
       <MetaOptimizerPanel />
 

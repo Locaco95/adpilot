@@ -46,11 +46,21 @@ async def daily_digest():
 
 
 async def optimizer_pass():
-    """Every hour — evaluate ad sets and execute/queue actions (if enabled)."""
-    from app.services.optimizer_runner import run_once
+    """Every hour — run the AI Media Buyer if enabled, else the deterministic
+    optimizer. Both execute/queue only within the operator's limits."""
     try:
-        result = await run_once()
-        logger.info("optimizer_pass: %s", result)
+        from app.database import AsyncSessionLocal
+        from app.services import optimizer_config, llm_models
+        async with AsyncSessionLocal() as db:
+            cfg = await optimizer_config.get_config(db)
+            model = await llm_models.get_current_model(db)
+        if cfg.get("ai_enabled"):
+            from app.services.ai_media_buyer_runner import run_once as ai_run
+            result = await ai_run(model=model)
+        else:
+            from app.services.optimizer_runner import run_once as det_run
+            result = await det_run()
+        logger.info("optimizer_pass: %s", {k: v for k, v in result.items() if k != "recommendations"})
     except Exception:
         logger.exception("optimizer_pass failed")
 
