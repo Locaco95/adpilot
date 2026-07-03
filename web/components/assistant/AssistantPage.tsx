@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { sendChat, decideAction, type PendingAction } from "@/services/agent.service";
+import { ModelSelector } from "@/components/telegram/ModelSelector";
 
 interface Msg {
   id: string;
@@ -167,6 +168,11 @@ export function AssistantPage() {
           Where should we begin?
         </h1>
 
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--text-tertiary)" }}>
+          <span>Model:</span>
+          <ModelSelector />
+        </div>
+
         {composer}
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
@@ -207,6 +213,10 @@ export function AssistantPage() {
         flexDirection: "column",
       }}
     >
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, padding: "8px 20px 0", fontSize: 12, color: "var(--text-tertiary)" }}>
+        <span>Model:</span>
+        <ModelSelector />
+      </div>
       <div
         ref={scrollRef}
         style={{

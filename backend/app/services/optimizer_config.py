@@ -27,6 +27,22 @@ DEFAULTS: dict = {
     # which metrics the operator has chosen to watch. Defaults to everything
     # available today; dormant ones are added as their data source comes online.
     "selected_metrics": ALWAYS_AVAILABLE,
+
+    # ── AI Media Buyer — business numbers the operator fills in ──
+    "avg_order_value": 0.0,          # AOV in currency; 0 = unknown
+    "min_days_before_judgment": 5,   # don't judge before day 5 (research-backed)
+    "min_daily_spend_per_adset": 0.0,  # algorithm-learning floor; 0 = ignore
+    "max_frequency": 3.0,            # above this + CTR drop = fatigue
+    "aggressiveness": "balanced",    # conservative | balanced | aggressive
+
+    # ── AI Media Buyer — auto-execute LIMITS (past these → queue for approval) ──
+    "ai_enabled": False,             # run the AI analyst layer
+    "scale_step_pct": 30,            # how much a SCALE raises budget
+    "decrease_step_pct": 25,         # how much a DECREASE lowers budget
+    "max_auto_budget_change_pct": 50,   # auto-run budget moves up to this; bigger → approval
+    "auto_kill": True,               # KILL/PAUSE may auto-run (stop-spend, safe)
+    "auto_scale": False,             # SCALE may auto-run (spends more) — off by default
+    "auto_decrease": True,           # DECREASE may auto-run (spends less, safe)
 }
 
 

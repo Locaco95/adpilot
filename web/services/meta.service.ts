@@ -49,6 +49,44 @@ export interface OptimizerConfig {
   currency: string;
   human_approval_spend_threshold: number;
   selected_metrics: string[];
+  // AI media buyer
+  ai_enabled: boolean;
+  avg_order_value: number;
+  min_days_before_judgment: number;
+  min_daily_spend_per_adset: number;
+  max_frequency: number;
+  aggressiveness: "conservative" | "balanced" | "aggressive";
+  scale_step_pct: number;
+  decrease_step_pct: number;
+  max_auto_budget_change_pct: number;
+  auto_kill: boolean;
+  auto_scale: boolean;
+  auto_decrease: boolean;
+}
+
+export interface AiRecommendation {
+  entity_id: string;
+  entity_name: string;
+  diagnosis: string;
+  action: "KILL" | "SCALE" | "DECREASE" | "HOLD" | "ROTATE_CREATIVE" | "DUPLICATE_WINNER" | "FLAG_FUNNEL";
+  reasoning: string;
+  confidence: "high" | "medium" | "low";
+  executed?: boolean;
+  result?: string;
+}
+
+export interface AiRunResponse {
+  ran: boolean;
+  reason?: string;
+  auto_execute?: boolean;
+  evaluated?: number;
+  executed?: number;
+  queued?: number;
+  recommendations: AiRecommendation[];
+}
+
+export function runAiMediaBuyer(): Promise<AiRunResponse> {
+  return apiPost<AiRunResponse>("/settings/ai-media-buyer/run", {}, 120_000);
 }
 
 export interface MetricDef {

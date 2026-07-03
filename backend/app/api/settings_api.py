@@ -47,6 +47,19 @@ class OptimizerConfigPatch(BaseModel):
     target_cpa: float | None = None
     human_approval_spend_threshold: float | None = None
     selected_metrics: list[str] | None = None
+    # AI media buyer
+    ai_enabled: bool | None = None
+    avg_order_value: float | None = None
+    min_days_before_judgment: int | None = None
+    min_daily_spend_per_adset: float | None = None
+    max_frequency: float | None = None
+    aggressiveness: str | None = None
+    scale_step_pct: int | None = None
+    decrease_step_pct: int | None = None
+    max_auto_budget_change_pct: int | None = None
+    auto_kill: bool | None = None
+    auto_scale: bool | None = None
+    auto_decrease: bool | None = None
 
 
 @router.get("/optimizer")
@@ -74,3 +87,15 @@ async def run_optimizer_now(_user=Depends(get_current_user)):
     """Trigger one optimizer pass immediately (respects enabled + kill switch)."""
     from app.services.optimizer_runner import run_once
     return await run_once()
+
+
+@router.post("/ai-media-buyer/run")
+async def run_ai_media_buyer_now(
+    db: AsyncSession = Depends(get_db),
+    _user=Depends(get_current_user),
+):
+    """Run one AI Media Buyer analysis pass now, using the operator's chosen model.
+    Returns per-ad-set diagnosis + action + reasoning (and executes within limits)."""
+    from app.services.ai_media_buyer_runner import run_once
+    model = await llm_models.get_current_model(db)
+    return await run_once(model=model)
