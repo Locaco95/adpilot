@@ -48,6 +48,37 @@ export interface OptimizerConfig {
   target_cpa: number;
   currency: string;
   human_approval_spend_threshold: number;
+  selected_metrics: string[];
+}
+
+export interface MetricDef {
+  key: string;
+  label: string;
+  group: string;
+  requires: "" | "pixel" | "video" | "history";
+  desc: string;
+}
+
+export interface MetricsCatalog { metrics: MetricDef[] }
+
+export interface EntityMetrics {
+  entity_id: string;
+  entity_name: string;
+  metrics: Record<string, number | null>;
+}
+
+export interface OptimizerMetricsResponse {
+  date_preset: string;
+  count: number;
+  entities: EntityMetrics[];
+}
+
+export function getOptimizerMetricsCatalog(): Promise<MetricsCatalog> {
+  return apiGet<MetricsCatalog>("/meta/optimizer/metrics-catalog");
+}
+
+export function getOptimizerMetrics(datePreset = "last_7d"): Promise<OptimizerMetricsResponse> {
+  return apiGet<OptimizerMetricsResponse>(`/meta/optimizer/metrics?date_preset=${datePreset}`);
 }
 
 export function getOptimizerRecs(datePreset = "last_7d"): Promise<OptimizerRecsResponse> {

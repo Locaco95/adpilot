@@ -4,6 +4,7 @@ import {
   getOptimizerRecs, getOptimizerConfig, setOptimizerConfig, runOptimizerNow,
   type OptimizerRec, type OptimizerConfig,
 } from "@/services/meta.service";
+import { MetricsSelector } from "./MetricsSelector";
 
 const ACTION_COLOR: Record<string, string> = {
   KILL: "var(--danger)", PAUSE: "var(--warning)", SCALE: "var(--success)",
@@ -28,6 +29,7 @@ export function MetaOptimizerPanel() {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [showMetrics, setShowMetrics] = useState(false);
 
   async function load() {
     setError(null);
@@ -48,6 +50,14 @@ export function MetaOptimizerPanel() {
     setCfg({ ...cfg, ...p }); // optimistic
     try { setCfg(await setOptimizerConfig(p)); }
     catch (e) { setError((e as Error).message); load(); }
+  }
+
+  function toggleMetric(key: string, on: boolean) {
+    if (!cfg) return;
+    const next = on
+      ? [...new Set([...cfg.selected_metrics, key])]
+      : cfg.selected_metrics.filter((k) => k !== key);
+    patch({ selected_metrics: next });
   }
 
   async function runNow() {
@@ -85,6 +95,23 @@ export function MetaOptimizerPanel() {
           <NumField label={`Breakeven ROAS`} value={cfg.breakeven_roas} onSave={(v) => patch({ breakeven_roas: v })} />
           <NumField label={`Target CPA (${cfg.currency})`} value={cfg.target_cpa} onSave={(v) => patch({ target_cpa: v })} />
           <NumField label={`Approval threshold (${cfg.currency})`} value={cfg.human_approval_spend_threshold} onSave={(v) => patch({ human_approval_spend_threshold: v })} />
+        </div>
+      )}
+
+      {/* metrics selector */}
+      {cfg && (
+        <div style={{ marginBottom: 16 }}>
+          <button onClick={() => setShowMetrics((v) => !v)}
+            style={{ background: "transparent", border: "1px solid var(--border-subtle)",
+              borderRadius: "var(--radius-sm)", padding: "7px 12px", color: "var(--text-secondary)",
+              fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+            {showMetrics ? "▾" : "▸"} Metrics ({cfg.selected_metrics.length} selected)
+          </button>
+          {showMetrics && (
+            <div style={{ marginTop: 12, padding: 14, background: "var(--bg-input)", borderRadius: "var(--radius-sm)", border: "1px solid var(--border-subtle)" }}>
+              <MetricsSelector selected={cfg.selected_metrics} onToggle={toggleMetric} />
+            </div>
+          )}
         </div>
       )}
 
