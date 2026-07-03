@@ -46,6 +46,7 @@ class OptimizerConfigPatch(BaseModel):
     breakeven_roas: float | None = None
     target_cpa: float | None = None
     human_approval_spend_threshold: float | None = None
+    selected_metrics: list[str] | None = None
 
 
 @router.get("/optimizer")

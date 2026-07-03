@@ -15,6 +15,8 @@ from app.models import SystemConfig
 
 CONFIG_KEY = "optimizer"
 
+from app.analytics.metric_catalog import ALWAYS_AVAILABLE
+
 DEFAULTS: dict = {
     "enabled": False,          # run the hourly loop at all
     "auto_execute": False,     # master kill switch — OFF until real numbers are set
@@ -22,6 +24,9 @@ DEFAULTS: dict = {
     "target_cpa": 200.0,       # EGP — placeholder, edit before enabling
     "currency": "EGP",
     "human_approval_spend_threshold": 1000.0,
+    # which metrics the operator has chosen to watch. Defaults to everything
+    # available today; dormant ones are added as their data source comes online.
+    "selected_metrics": ALWAYS_AVAILABLE,
 }
 
 

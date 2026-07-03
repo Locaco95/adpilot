@@ -148,6 +148,33 @@ def _sum_action(rows: list[dict], key: str, action_types: tuple[str, ...]) -> fl
 _PURCHASE_TYPES = ("purchase", "omni_purchase", "offsite_conversion.fb_pixel_purchase")
 
 
+@router.get("/optimizer/metrics-catalog")
+async def optimizer_metrics_catalog(_user=Depends(get_current_user)):
+    """Every metric the optimizer can read, grouped, with its data dependency."""
+    from app.analytics.metric_catalog import CATALOG
+    return {"metrics": [
+        {"key": m.key, "label": m.label, "group": m.group, "requires": m.requires, "desc": m.desc}
+        for m in CATALOG
+    ]}
+
+
+@router.get("/optimizer/metrics")
+async def optimizer_metrics(
+    date_preset: str = Query("last_7d"),
+    _user=Depends(get_current_user),
+):
+    """Per active ad set: every catalog metric's live value (None = unavailable
+    for this account/period). Powers the metrics table + selector UI."""
+    from app.services.optimizer_data import build_adset_metrics
+    try:
+        rows = await build_adset_metrics(date_preset)
+    except MetaAuthError as e:
+        raise HTTPException(503, f"Meta auth error: {e}")
+    except HTTPStatusError as e:
+        raise HTTPException(e.response.status_code, f"Meta API error: {e.response.text[:400]}")
+    return {"date_preset": date_preset, "count": len(rows), "entities": rows}
+
+
 @router.get("/optimizer/recommendations")
 async def optimizer_recommendations(
     date_preset: str = Query("last_7d"),
