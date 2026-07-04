@@ -91,7 +91,7 @@ def start_scheduler():
     scheduler.add_job(expire_pending_actions,  IntervalTrigger(minutes=1),  id="expire",       max_instances=1)
     scheduler.add_job(commit_revocable_actions, IntervalTrigger(seconds=30), id="commit_revocable", max_instances=1)
     scheduler.add_job(daily_digest,            CronTrigger(hour=5, minute=0), id="daily_digest", max_instances=1)
-    scheduler.add_job(optimizer_pass,          IntervalTrigger(hours=1),    id="optimizer",    max_instances=1)
+    scheduler.add_job(optimizer_pass,          IntervalTrigger(hours=6),    id="optimizer",    max_instances=1)
     scheduler.add_job(ai_weekly_review,        CronTrigger(day_of_week="mon", hour=3, minute=0), id="ai_review", max_instances=1)
 
     scheduler.start()

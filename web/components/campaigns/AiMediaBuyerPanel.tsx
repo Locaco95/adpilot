@@ -88,7 +88,7 @@ export function AiMediaBuyerPanel() {
       {/* auto-execute controls */}
       <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.04em", margin: "16px 0 8px" }}>Autonomy — what the AI may do on its own</div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
-        <Toggle label="AI enabled" hint="run every hour" on={cfg.ai_enabled} onChange={(v) => patch({ ai_enabled: v })} />
+        <Toggle label="AI enabled" hint="runs every 6 hours" on={cfg.ai_enabled} onChange={(v) => patch({ ai_enabled: v })} />
         <Toggle label="Auto-execute" hint="OFF = propose only" on={cfg.auto_execute} onChange={(v) => patch({ auto_execute: v })} danger />
         <Toggle label="Auto-kill/pause" hint="stop losers on its own" on={cfg.auto_kill} onChange={(v) => patch({ auto_kill: v })} />
         <Toggle label="Auto-decrease" hint="cut budget on its own" on={cfg.auto_decrease} onChange={(v) => patch({ auto_decrease: v })} />
