@@ -117,6 +117,35 @@ async def get_history_prompt(db: AsyncSession, entity_ids: list[str]) -> str:
     return "\n".join(lines)
 
 
+async def hours_since_last_action(db: AsyncSession, entity_id: str) -> float | None:
+    """Hours since the AI last EXECUTED an action on this ad set (any decision it
+    actually ran). None if it never acted. Used for the action cooldown so the
+    hourly job doesn't repeatedly change the same ad set."""
+    mem = await _load(db)
+    from datetime import datetime, timezone
+    latest = None
+    for e in mem.get("decisions", {}).get(entity_id, []):
+        if e.get("executed_at"):
+            try:
+                t = datetime.fromisoformat(e["executed_at"])
+                if latest is None or t > latest:
+                    latest = t
+            except ValueError:
+                pass
+    if latest is None:
+        return None
+    return (datetime.now(timezone.utc) - latest).total_seconds() / 3600.0
+
+
+async def mark_executed(db: AsyncSession, entity_id: str) -> None:
+    """Stamp the most recent decision on this entity as executed now."""
+    mem = await _load(db)
+    lst = mem.get("decisions", {}).get(entity_id, [])
+    if lst:
+        lst[-1]["executed_at"] = _now()
+        await _save(db, mem)
+
+
 async def add_lessons(db: AsyncSession, lessons: list[str]) -> None:
     mem = await _load(db)
     cur = mem.setdefault("lessons", [])

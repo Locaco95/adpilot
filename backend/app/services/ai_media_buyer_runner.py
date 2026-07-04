@@ -71,17 +71,27 @@ async def run_once(model: str | None = None) -> dict:
         await ai_memory.record_decisions(db, recs, metrics_by_id)
 
         auto = bool(cfg.get("auto_execute"))
-        executed, queued = 0, 0
+        cooldown_hours = float(cfg.get("action_cooldown_days", 3)) * 24
+        executed, queued, cooled = 0, 0, 0
         for rec in recs:
             rec["executed"] = False
             if rec["action"] == "HOLD":
                 continue
+            # cooldown: don't act on the same ad set twice within the window —
+            # a budget/status change needs time to breathe before we judge again.
+            if rec["action"] in _EXECUTABLE:
+                since = await ai_memory.hours_since_last_action(db, rec["entity_id"])
+                if since is not None and since < cooldown_hours:
+                    rec["result"] = f"cooldown: acted {since:.0f}h ago (< {cooldown_hours:.0f}h)"
+                    cooled += 1
+                    continue
             can_auto = auto and rec["action"] in _EXECUTABLE and _may_auto(rec["action"], rec["confidence"], cfg)
             if can_auto:
                 try:
                     detail = await _execute(rec, cfg)
                     rec["executed"] = True
                     rec["result"] = detail
+                    await ai_memory.mark_executed(db, rec["entity_id"])
                     db.add(AuditLog(action="ai_executed", tier=1,
                         detail=f"{rec['action']} — {rec['reasoning'][:200]} — {detail}",
                         actor="ai_media_buyer", entity_type="ad_set", entity_id=None,
@@ -104,7 +114,8 @@ async def run_once(model: str | None = None) -> dict:
 
         await db.commit()
         return {"ran": True, "auto_execute": auto, "evaluated": len(entities),
-                "executed": executed, "queued": queued, "recommendations": recs}
+                "executed": executed, "queued": queued, "cooled_down": cooled,
+                "recommendations": recs}
 
 
 async def run_self_review(model: str | None = None) -> dict:
