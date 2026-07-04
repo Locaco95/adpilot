@@ -108,7 +108,7 @@ async def _fetch_rows(date_preset: str) -> tuple[list[dict], dict[str, dict]]:
 
     meta = await client.get(
         f"/{acct}/adsets",
-        params={"fields": "id,name,status,created_time,daily_budget", "limit": 200},
+        params={"fields": "id,name,status,effective_status,created_time,daily_budget", "limit": 200},
     )
     by_id = {a["id"]: a for a in meta.get("data", [])}
 
@@ -125,6 +125,23 @@ async def _fetch_rows(date_preset: str) -> tuple[list[dict], dict[str, dict]]:
     return [], by_id
 
 
+def _is_delivering(md: dict) -> bool:
+    """True only if the ad set is GENUINELY running — its own status ACTIVE and
+    its parent campaign ACTIVE too. Meta's effective_status collapses both:
+    an ACTIVE ad set under a paused campaign reports CAMPAIGN_PAUSED, and we must
+    NOT manage it (it isn't spending). Unknown metadata → skip, don't guess."""
+    return md.get("effective_status") == "ACTIVE"
+
+
+if __name__ == "__main__":
+    # only a genuinely-delivering ad set passes
+    assert _is_delivering({"status": "ACTIVE", "effective_status": "ACTIVE"})
+    assert not _is_delivering({"status": "ACTIVE", "effective_status": "CAMPAIGN_PAUSED"})
+    assert not _is_delivering({"status": "PAUSED", "effective_status": "PAUSED"})
+    assert not _is_delivering({})  # unknown → skip
+    print("OK _is_delivering self-check passed")
+
+
 async def build_adset_metrics(date_preset: str = "last_7d") -> list[dict]:
     """Per active ad set: {entity_id, entity_name, days_running, metrics:{key:val|None}}.
     Powers the UI metrics report — every catalog metric, None where unavailable."""
@@ -133,7 +150,7 @@ async def build_adset_metrics(date_preset: str = "last_7d") -> list[dict]:
     for row in rows:
         aid = row.get("adset_id")
         md = by_id.get(aid, {})
-        if md.get("status") not in (None, "ACTIVE"):
+        if not _is_delivering(md):
             continue
         metrics = _extract_metrics(row)
         metrics["days_running"] = float(_days_running(md.get("created_time")))
@@ -148,7 +165,7 @@ async def build_adset_snapshots(date_preset: str = "last_7d") -> list[EntitySnap
     for row in rows:
         aid = row.get("adset_id")
         md = by_id.get(aid, {})
-        if md.get("status") not in (None, "ACTIVE"):
+        if not _is_delivering(md):
             continue
         m = _extract_metrics(row)
         snapshots.append(EntitySnapshot(
