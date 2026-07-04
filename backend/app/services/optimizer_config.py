@@ -43,6 +43,9 @@ DEFAULTS: dict = {
     "auto_kill": True,               # KILL/PAUSE may auto-run (stop-spend, safe)
     "auto_scale": False,             # SCALE may auto-run (spends more) — off by default
     "auto_decrease": True,           # DECREASE may auto-run (spends less, safe)
+    # Don't act on the SAME ad set again within this many days — a change needs
+    # time to breathe (rolling-window discipline; stacking edits resets learning).
+    "action_cooldown_days": 3,
 }
 
 

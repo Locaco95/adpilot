@@ -60,6 +60,7 @@ class OptimizerConfigPatch(BaseModel):
     auto_kill: bool | None = None
     auto_scale: bool | None = None
     auto_decrease: bool | None = None
+    action_cooldown_days: int | None = None
 
 
 @router.get("/optimizer")
