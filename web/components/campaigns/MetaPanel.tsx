@@ -1,7 +1,7 @@
 "use client";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMetaStatus, useMetaAccount, useMetaCampaigns, useMetaInsights, useSetMetaCampaignStatus, useMetaCampaignAdSets, useSetMetaAdSetStatus, useDeleteMetaCampaign, metaKeys } from "@/hooks/useMeta";
+import { useMetaStatus, useMetaAccount, useMetaCampaigns, useMetaInsights, useSetMetaCampaignStatus, useMetaCampaignAdSets, useMetaAdSetAds, useSetMetaAdSetStatus, useDeleteMetaCampaign, metaKeys } from "@/hooks/useMeta";
 import { createMetaCampaignShell, createMetaAdSet, searchMetaInterests } from "@/services/meta.service";
 import { CreativePicker } from "@/components/common/CreativePicker";
 import { MetaAuditPanel } from "./MetaAuditPanel";
@@ -682,6 +682,32 @@ function StatusButton({ active, busy, onPause, onActivate }: {
 }
 
 /* Expanded ad-set rows under a campaign, each with its own Pause/Activate. */
+/* Ads under one ad set — name + status, shown when the ad set row is expanded. */
+function AdSubRows({ adsetId }: { adsetId: string }) {
+  const { data, isLoading } = useMetaAdSetAds(adsetId, true);
+  const ads = data?.data ?? [];
+  if (isLoading) {
+    return <tr><td colSpan={8} style={{ padding: "6px 18px 6px 54px", color: "var(--text-tertiary)", fontSize: 11 }}>Loading ads…</td></tr>;
+  }
+  if (ads.length === 0) {
+    return <tr><td colSpan={8} style={{ padding: "6px 18px 6px 54px", color: "var(--text-tertiary)", fontSize: 11 }}>No ads.</td></tr>;
+  }
+  return (
+    <>
+      {ads.map((ad) => {
+        const active = ad.effective_status === "ACTIVE";
+        return (
+          <tr key={ad.id} style={{ background: "var(--bg-subtle, rgba(127,127,127,0.02))" }}>
+            <td className="col-name" style={{ paddingLeft: 54, fontSize: 11, color: "var(--text-tertiary)" }}>· {ad.name}</td>
+            <td><StatusPill label={ad.effective_status ?? ad.status} color={active ? "var(--success)" : "var(--text-tertiary)"} /></td>
+            <td colSpan={6} className="col-hide-mobile" />
+          </tr>
+        );
+      })}
+    </>
+  );
+}
+
 function AdSetSubRows({ campaignId, currency, onConfirmActivate }: {
   campaignId: string; currency: string;
   onConfirmActivate: (adset: MetaAdSet) => void;
@@ -690,6 +716,10 @@ function AdSetSubRows({ campaignId, currency, onConfirmActivate }: {
   const setAdSetStatus = useSetMetaAdSetStatus(campaignId);
   const pendingId = setAdSetStatus.isPending ? (setAdSetStatus.variables?.id ?? null) : null;
   const adsets = data?.data ?? [];
+  const [openAds, setOpenAds] = useState<Set<string>>(new Set());
+  const toggleAds = (id: string) => setOpenAds((prev) => {
+    const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next;
+  });
 
   if (isLoading) {
     return <tr><td colSpan={8} style={{ padding: "8px 18px", color: "var(--text-tertiary)", fontSize: 12 }}>Loading ad sets…</td></tr>;
@@ -702,19 +732,31 @@ function AdSetSubRows({ campaignId, currency, onConfirmActivate }: {
       {adsets.map((a) => {
         const active = a.status === "ACTIVE";
         const busy = pendingId === a.id;
+        const adsOpen = openAds.has(a.id);
         return (
-          <tr key={a.id} style={{ background: "var(--bg-subtle, rgba(127,127,127,0.04))" }}>
-            <td className="col-name" style={{ paddingLeft: 34, fontSize: 12, color: "var(--text-secondary)" }}>↳ {a.name}</td>
-            <td><StatusPill label={a.status} color={active ? "var(--success)" : "var(--text-tertiary)"} /></td>
-            <td className="col-hide-mobile" style={{ fontSize: 12 }}>{a.optimization_goal ?? "—"}</td>
-            <td className="col-hide-mobile">{centsToCurrency(a.daily_budget, currency)}</td>
-            <td colSpan={3} className="col-hide-mobile" />
-            <td>
-              <StatusButton active={active} busy={busy}
-                onPause={() => setAdSetStatus.mutate({ id: a.id, status: "PAUSED" })}
-                onActivate={() => onConfirmActivate(a)} />
-            </td>
-          </tr>
+          <Fragment key={a.id}>
+            <tr style={{ background: "var(--bg-subtle, rgba(127,127,127,0.04))" }}>
+              <td className="col-name" style={{ paddingLeft: 34, fontSize: 12, color: "var(--text-secondary)" }}>
+                <button onClick={() => toggleAds(a.id)}
+                  style={{ background: "transparent", border: "none", color: "var(--text-tertiary)",
+                    cursor: "pointer", fontSize: 10, marginRight: 6, width: 12, display: "inline-block" }}
+                  aria-label={adsOpen ? "Collapse ads" : "Show ads"}>
+                  {adsOpen ? "▾" : "▸"}
+                </button>
+                ↳ {a.name}
+              </td>
+              <td><StatusPill label={a.status} color={active ? "var(--success)" : "var(--text-tertiary)"} /></td>
+              <td className="col-hide-mobile" style={{ fontSize: 12 }}>{a.optimization_goal ?? "—"}</td>
+              <td className="col-hide-mobile">{centsToCurrency(a.daily_budget, currency)}</td>
+              <td colSpan={3} className="col-hide-mobile" />
+              <td>
+                <StatusButton active={active} busy={busy}
+                  onPause={() => setAdSetStatus.mutate({ id: a.id, status: "PAUSED" })}
+                  onActivate={() => onConfirmActivate(a)} />
+              </td>
+            </tr>
+            {adsOpen && <AdSubRows adsetId={a.id} />}
+          </Fragment>
         );
       })}
     </>

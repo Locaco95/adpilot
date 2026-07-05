@@ -4,6 +4,7 @@ import {
   getMetaAccount,
   getMetaCampaigns,
   getMetaCampaignAdSets,
+  getMetaAdSetAds,
   getMetaInsights,
   getMetaAudit,
   setMetaCampaignStatus,
@@ -101,6 +102,16 @@ export function useMetaCampaignAdSets(campaignId: string, enabled = true) {
   return useQuery({
     queryKey: metaKeys.adsets(campaignId),
     queryFn: () => getMetaCampaignAdSets(campaignId),
+    staleTime: 30_000,
+    enabled,
+    retry: false,
+  });
+}
+
+export function useMetaAdSetAds(adsetId: string, enabled = true) {
+  return useQuery({
+    queryKey: ["meta", "ads", adsetId] as const,
+    queryFn: () => getMetaAdSetAds(adsetId),
     staleTime: 30_000,
     enabled,
     retry: false,

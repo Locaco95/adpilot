@@ -115,6 +115,15 @@ async def campaign_adsets(campaign_id: str, _user=Depends(get_current_user)):
     )
 
 
+@router.get("/adsets/{adset_id}/ads")
+async def adset_ads(adset_id: str, _user=Depends(get_current_user)):
+    """Ads belonging to one ad set, with status."""
+    return await _call(
+        f"/{adset_id}/ads",
+        params={"fields": "name,status,effective_status", "limit": 100},
+    )
+
+
 @router.get("/insights")
 async def insights(
     level: str = Query("campaign", description="account | campaign | adset | ad"),
