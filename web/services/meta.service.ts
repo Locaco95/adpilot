@@ -223,6 +223,12 @@ export function getMetaCampaignAdSets(
   return apiGet<MetaListResponse<MetaAdSet>>(`/meta/campaigns/${campaignId}/adsets`);
 }
 
+export interface MetaAd { id: string; name: string; status: string; effective_status?: string }
+
+export function getMetaAdSetAds(adsetId: string): Promise<MetaListResponse<MetaAd>> {
+  return apiGet<MetaListResponse<MetaAd>>(`/meta/adsets/${adsetId}/ads`);
+}
+
 /* Activate or pause a single ad set (+ its ads). Activating spends real money. */
 export function setMetaAdSetStatus(
   adsetId: string,
