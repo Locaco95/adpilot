@@ -39,6 +39,10 @@ have all required parameters, call the write tool directly. The card IS the conf
 
 Rules:
 - When the user references a campaign or ad squad by name, first use the list tools to find its id.
+- REAL ORDERS: when the operator tells you how many orders/sales an ad set got (e.g. "air fryer \
+got 5 orders", "kora fawara sold 3"), this is their real Cash-on-Delivery sales that Meta can't \
+see. Find the ad set id with meta_list_adsets, then call set_real_orders with the TOTAL count \
+(it overwrites, so use the full current total the operator states). Confirm the total back to them.
 - Budgets are in the ad account currency (usually USD). Minimum daily budget is 20.
 - New campaigns are always created PAUSED; tell the user they must activate them to spend.
 - For create_campaign you need: name, objective, country_code, daily_budget, destination_url, \
@@ -111,6 +115,19 @@ TOOLS = [
         "name": "meta_list_campaigns",
         "description": "List Meta campaigns with id, name, status, objective, daily budget.",
         "parameters": {"type": "object", "properties": {}, "required": []},
+    }},
+    {"type": "function", "function": {
+        "name": "meta_list_adsets",
+        "description": "List Meta ad sets with id, name, status. Use this to find an ad set's id by its name before setting real orders.",
+        "parameters": {"type": "object", "properties": {}, "required": []},
+    }},
+    {"type": "function", "function": {
+        "name": "set_real_orders",
+        "description": "Set the TOTAL real purchased-order count for a Meta ad set (the operator's actual sales, e.g. Cash-on-Delivery, that Meta can't see). This SETS/overwrites the total — it's the new grand total, not an increment. Find the ad set id first with meta_list_adsets. Runs immediately.",
+        "parameters": {"type": "object", "properties": {
+            "ad_set_id": {"type": "string", "description": "Meta ad set id (from meta_list_adsets)"},
+            "orders": {"type": "integer", "minimum": 0, "description": "The new TOTAL number of real orders for this ad set"},
+        }, "required": ["ad_set_id", "orders"]},
     }},
     # ---- Meta writes (confirm-gated) ----
     {"type": "function", "function": {
@@ -213,6 +230,18 @@ async def _run_read_tool(name: str, args: dict) -> str:
         macct = s.meta_ad_account_id
         data = await m.get(f"/{macct}/campaigns", params={"fields": "name,status,objective,daily_budget", "limit": 100})
         return json.dumps(data.get("data", []))
+    if name == "meta_list_adsets":
+        m = get_meta_client()
+        macct = s.meta_ad_account_id
+        data = await m.get(f"/{macct}/adsets", params={"fields": "id,name,status,effective_status", "limit": 100})
+        return json.dumps(data.get("data", []))
+    if name == "set_real_orders":
+        from app.database import AsyncSessionLocal
+        from app.services import real_orders
+        async with AsyncSessionLocal() as db:
+            await real_orders.set_orders(db, str(args["ad_set_id"]), int(args["orders"]), actor="telegram")
+        return json.dumps({"ok": True, "ad_set_id": args["ad_set_id"], "total_orders": int(args["orders"]),
+                           "note": "Total real orders set. The AI will now judge this ad set on true CPA/ROAS."})
 
     return json.dumps({"error": f"unknown tool {name}"})
 
