@@ -89,6 +89,16 @@ export function runAiMediaBuyer(): Promise<AiRunResponse> {
   return apiPost<AiRunResponse>("/settings/ai-media-buyer/run", {}, 120_000);
 }
 
+export type RealOrdersMap = Record<string, { orders: number; at: string }>;
+
+export function getRealOrders(): Promise<RealOrdersMap> {
+  return apiGet<RealOrdersMap>("/settings/real-orders");
+}
+
+export function setRealOrders(entityId: string, orders: number): Promise<RealOrdersMap> {
+  return apiPost<RealOrdersMap>("/settings/real-orders", { entity_id: entityId, orders });
+}
+
 export interface AiMemory { lessons: string[]; decision_count: number }
 
 export function getAiMemory(): Promise<AiMemory> {
