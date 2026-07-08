@@ -59,6 +59,24 @@ async def run_once(model: str | None = None) -> dict:
             return {"ran": False, "reason": "AI media buyer disabled", "recommendations": []}
 
         entities = await build_adset_metrics()
+        # Overlay operator-entered real orders → true CPA/ROAS (COD ground truth
+        # Meta can't see). When present, these override Meta's blind numbers.
+        from app.services import real_orders
+        ro = await real_orders.get_all(db)
+        aov = float(cfg.get("avg_order_value", 0) or 0)
+        for e in entities:
+            entry = ro.get(e["entity_id"])
+            if entry and entry.get("orders"):
+                m = e["metrics"]
+                tm = real_orders.true_metrics(int(entry["orders"]), float(m.get("spend") or 0), aov)
+                m.update({k: v for k, v in tm.items() if v is not None})
+                # let the engine's real decision metrics use the truth
+                if tm["real_roas"] is not None:
+                    m["roas"] = tm["real_roas"]
+                if tm["real_cpa"] is not None:
+                    m["cpa"] = tm["real_cpa"]
+                m["conversions"] = int(entry["orders"])
+
         metrics_by_id = {e["entity_id"]: e.get("metrics", {}) for e in entities}
         ids = [e["entity_id"] for e in entities]
 

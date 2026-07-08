@@ -102,6 +102,33 @@ async def run_ai_media_buyer_now(
     return await run_once(model=model)
 
 
+class RealOrders(BaseModel):
+    entity_id: str
+    orders: int
+
+
+@router.get("/real-orders")
+async def get_real_orders(
+    db: AsyncSession = Depends(get_db),
+    _user=Depends(get_current_user),
+):
+    """Operator-entered real order counts per ad set (COD ground truth)."""
+    from app.services import real_orders
+    return await real_orders.get_all(db)
+
+
+@router.post("/real-orders")
+async def set_real_orders(
+    body: RealOrders,
+    db: AsyncSession = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    from app.services import real_orders
+    if body.orders < 0:
+        raise HTTPException(422, "orders must be >= 0")
+    return await real_orders.set_orders(db, body.entity_id, body.orders, actor=user.get("sub", "operator"))
+
+
 @router.get("/ai-media-buyer/memory")
 async def ai_media_buyer_memory(
     db: AsyncSession = Depends(get_db),

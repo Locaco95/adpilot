@@ -2,8 +2,8 @@
 import { useEffect, useState } from "react";
 import {
   getOptimizerConfig, setOptimizerConfig, runAiMediaBuyer,
-  getAiMemory, runAiSelfReview,
-  type OptimizerConfig, type AiRecommendation, type AiMemory,
+  getAiMemory, runAiSelfReview, getRealOrders, setRealOrders,
+  type OptimizerConfig, type AiRecommendation, type AiMemory, type RealOrdersMap,
 } from "@/services/meta.service";
 
 const ACTION_COLOR: Record<string, string> = {
@@ -24,9 +24,16 @@ export function AiMediaBuyerPanel() {
   const [summary, setSummary] = useState<string | null>(null);
   const [memory, setMemory] = useState<AiMemory | null>(null);
   const [reviewing, setReviewing] = useState(false);
+  const [orders, setOrders] = useState<RealOrdersMap>({});
 
   useEffect(() => { getOptimizerConfig().then(setCfg).catch((e) => setError((e as Error).message)); }, []);
   useEffect(() => { getAiMemory().then(setMemory).catch(() => {}); }, []);
+  useEffect(() => { getRealOrders().then(setOrders).catch(() => {}); }, []);
+
+  async function saveOrders(entityId: string, n: number) {
+    try { setOrders(await setRealOrders(entityId, n)); }
+    catch (e) { setError((e as Error).message); }
+  }
 
   async function selfReview() {
     setReviewing(true); setError(null);
@@ -156,12 +163,44 @@ export function AiMediaBuyerPanel() {
                 <strong>Why:</strong> {r.reasoning}
               </div>
               {r.result && <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 6, fontFamily: "var(--font-mono)" }}>{r.result}</div>}
+
+              {/* real orders — COD ground truth the AI should judge on */}
+              <RealOrdersInput
+                entityId={r.entity_id}
+                current={orders[r.entity_id]?.orders ?? 0}
+                aov={cfg.avg_order_value}
+                currency={cur}
+                onSave={(n) => saveOrders(r.entity_id, n)}
+              />
             </div>
           ))}
         </div>
       )}
       {recs && recs.length === 0 && summary && (
         <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 12 }}>No active ad sets to analyze.</div>
+      )}
+    </div>
+  );
+}
+
+/* Real orders from YOUR store (COD ground truth). Shows the true CPA/ROAS. */
+function RealOrdersInput({ entityId, current, aov, currency, onSave }: {
+  entityId: string; current: number; aov: number; currency: string; onSave: (n: number) => void;
+}) {
+  const [v, setV] = useState(String(current));
+  useEffect(() => { setV(String(current)); }, [current]);
+  const n = Number(v) || 0;
+  const revenue = n * aov;
+  return (
+    <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <label style={{ fontSize: 11, color: "var(--text-tertiary)", fontWeight: 600 }}>Real orders (from your store):</label>
+      <input type="number" min={0} value={v} onChange={(e) => setV(e.target.value)}
+        onBlur={() => { const x = Number(v); if (!Number.isNaN(x) && x !== current) onSave(x); }}
+        style={{ width: 70, background: "var(--bg-input)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-sm)", padding: "5px 8px", color: "var(--text-primary)", fontSize: 12, outline: "none" }} />
+      {n > 0 && aov > 0 && (
+        <span style={{ fontSize: 11, color: "var(--success)", fontFamily: "var(--font-mono)" }}>
+          → revenue {revenue.toLocaleString()} {currency} (true ROAS the AI will use)
+        </span>
       )}
     </div>
   );

@@ -67,6 +67,12 @@ OPERATOR TARGETS (their actual business numbers — respect these):
 - Aggressiveness: {aggressiveness} (conservative = slower to scale, faster to protect; \
 aggressive = scale winners harder, cut losers faster)
 
+CASH-ON-DELIVERY / real orders: for COD stores, Meta's pixel attributes only a fraction of \
+sales, so its roas/cpa can be misleadingly low or zero. When a metric named real_orders (and \
+real_roas/real_cpa) is present, it is the operator's ACTUAL sales from their store — TRUST IT \
+over Meta's attributed numbers. Judge profitability on real_roas/real_cpa when available. Never \
+KILL an ad set that is profitable on real orders just because Meta shows 0.
+
 CONFIDENCE: only "high" when the data is unambiguous and there's enough spend/time. If data is \
 thin, early, or contradictory, say "low" or "medium" and prefer HOLD. Never fake certainty.
 
