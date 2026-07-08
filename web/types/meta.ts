@@ -48,6 +48,7 @@ export interface MetaInsightRow {
   ctr?: string;
   cpc?: string;
   reach?: string;
+  purchase_roas?: { action_type: string; value: string }[];
 }
 
 export interface MetaListResponse<T> {

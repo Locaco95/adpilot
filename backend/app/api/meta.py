@@ -136,7 +136,7 @@ async def insights(
         params={
             "level": level,
             "date_preset": date_preset,
-            "fields": "campaign_name,spend,impressions,clicks,ctr,cpc,reach",
+            "fields": "campaign_name,spend,impressions,clicks,ctr,cpc,reach,purchase_roas",
             "limit": 100,
         },
     )

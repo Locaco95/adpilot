@@ -687,10 +687,10 @@ function AdSubRows({ adsetId }: { adsetId: string }) {
   const { data, isLoading } = useMetaAdSetAds(adsetId, true);
   const ads = data?.data ?? [];
   if (isLoading) {
-    return <tr><td colSpan={8} style={{ padding: "6px 18px 6px 54px", color: "var(--text-tertiary)", fontSize: 11 }}>Loading ads…</td></tr>;
+    return <tr><td colSpan={9} style={{ padding: "6px 18px 6px 54px", color: "var(--text-tertiary)", fontSize: 11 }}>Loading ads…</td></tr>;
   }
   if (ads.length === 0) {
-    return <tr><td colSpan={8} style={{ padding: "6px 18px 6px 54px", color: "var(--text-tertiary)", fontSize: 11 }}>No ads.</td></tr>;
+    return <tr><td colSpan={9} style={{ padding: "6px 18px 6px 54px", color: "var(--text-tertiary)", fontSize: 11 }}>No ads.</td></tr>;
   }
   return (
     <>
@@ -700,7 +700,7 @@ function AdSubRows({ adsetId }: { adsetId: string }) {
           <tr key={ad.id} style={{ background: "var(--bg-subtle, rgba(127,127,127,0.02))" }}>
             <td className="col-name" style={{ paddingLeft: 54, fontSize: 11, color: "var(--text-tertiary)" }}>· {ad.name}</td>
             <td><StatusPill label={ad.effective_status ?? ad.status} color={active ? "var(--success)" : "var(--text-tertiary)"} /></td>
-            <td colSpan={6} className="col-hide-mobile" />
+            <td colSpan={7} className="col-hide-mobile" />
           </tr>
         );
       })}
@@ -722,10 +722,10 @@ function AdSetSubRows({ campaignId, currency, onConfirmActivate }: {
   });
 
   if (isLoading) {
-    return <tr><td colSpan={8} style={{ padding: "8px 18px", color: "var(--text-tertiary)", fontSize: 12 }}>Loading ad sets…</td></tr>;
+    return <tr><td colSpan={9} style={{ padding: "8px 18px", color: "var(--text-tertiary)", fontSize: 12 }}>Loading ad sets…</td></tr>;
   }
   if (adsets.length === 0) {
-    return <tr><td colSpan={8} style={{ padding: "8px 18px", color: "var(--text-tertiary)", fontSize: 12 }}>No ad sets.</td></tr>;
+    return <tr><td colSpan={9} style={{ padding: "8px 18px", color: "var(--text-tertiary)", fontSize: 12 }}>No ad sets.</td></tr>;
   }
   return (
     <>
@@ -748,7 +748,7 @@ function AdSetSubRows({ campaignId, currency, onConfirmActivate }: {
               <td><StatusPill label={a.status} color={active ? "var(--success)" : "var(--text-tertiary)"} /></td>
               <td className="col-hide-mobile" style={{ fontSize: 12 }}>{a.optimization_goal ?? "—"}</td>
               <td className="col-hide-mobile">{centsToCurrency(a.daily_budget, currency)}</td>
-              <td colSpan={3} className="col-hide-mobile" />
+              <td colSpan={4} className="col-hide-mobile" />
               <td>
                 <StatusButton active={active} busy={busy}
                   onPause={() => setAdSetStatus.mutate({ id: a.id, status: "PAUSED" })}
@@ -889,6 +889,7 @@ export function MetaPanel() {
                 <th style={{ width: 90 }}>7d Spend</th>
                 <th className="col-hide-mobile" style={{ width: 70 }}>Clicks</th>
                 <th className="col-hide-mobile" style={{ width: 64 }}>CTR</th>
+                <th className="col-hide-mobile" style={{ width: 80 }} title="Meta-attributed ROAS. For COD, real ROAS is in the AI Media Buyer panel.">ROAS</th>
                 <th style={{ width: 150 }}></th>
               </tr>
             </thead>
@@ -916,6 +917,10 @@ export function MetaPanel() {
                       <td>{ins?.spend ? `${Number(ins.spend).toFixed(2)} ${currency}` : "—"}</td>
                       <td className="col-hide-mobile">{ins?.clicks ?? "—"}</td>
                       <td className="col-hide-mobile">{ins?.ctr ? `${Number(ins.ctr).toFixed(2)}%` : "—"}</td>
+                      <td className="col-hide-mobile">{(() => {
+                        const roas = ins?.purchase_roas?.[0]?.value;
+                        return roas && Number(roas) > 0 ? `${Number(roas).toFixed(2)}×` : "—";
+                      })()}</td>
                       <td>
                         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                           <StatusButton active={active} busy={rowBusy}
