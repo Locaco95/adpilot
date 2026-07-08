@@ -325,7 +325,8 @@ async def audit(
         "conv_rate": (purchases / clicks * 100) if clicks and purchases else None,
         "roas": (revenue / spend) if spend and revenue else None,
     }
-    result = audit_metrics(metrics)
+    _acfg = await _oc.get_config(db)
+    result = audit_metrics(metrics, currency=_acfg.get("currency", "USD"))
     return {
         "available": True,
         "date_preset": date_preset,
