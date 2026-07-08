@@ -91,6 +91,15 @@ export function runAiMediaBuyer(): Promise<AiRunResponse> {
 
 export type RealOrdersMap = Record<string, { orders: number; at: string }>;
 
+export interface RealRoasResponse {
+  aov: number;
+  campaigns: Record<string, { orders: number; revenue: number; roas: number | null; cpa: number | null }>;
+}
+
+export function getRealRoas(datePreset = "last_7d"): Promise<RealRoasResponse> {
+  return apiGet<RealRoasResponse>(`/meta/real-roas?date_preset=${datePreset}`);
+}
+
 export function getRealOrders(): Promise<RealOrdersMap> {
   return apiGet<RealOrdersMap>("/settings/real-orders");
 }

@@ -2,7 +2,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMetaStatus, useMetaAccount, useMetaCampaigns, useMetaInsights, useSetMetaCampaignStatus, useMetaCampaignAdSets, useMetaAdSetAds, useSetMetaAdSetStatus, useDeleteMetaCampaign, metaKeys } from "@/hooks/useMeta";
-import { createMetaCampaignShell, createMetaAdSet, searchMetaInterests } from "@/services/meta.service";
+import { createMetaCampaignShell, createMetaAdSet, searchMetaInterests, getRealRoas } from "@/services/meta.service";
 import { CreativePicker } from "@/components/common/CreativePicker";
 import { MetaAuditPanel } from "./MetaAuditPanel";
 import { AiMediaBuyerPanel } from "./AiMediaBuyerPanel";
@@ -794,6 +794,13 @@ export function MetaPanel() {
     });
   }
 
+  // Real ROAS per campaign from operator-entered orders (COD ground truth).
+  const [realRoas, setRealRoas] = useState<Record<string, { roas: number | null; orders: number }>>({});
+  useEffect(() => {
+    if (!connected) return;
+    getRealRoas("last_7d").then((r) => setRealRoas(r.campaigns)).catch(() => {});
+  }, [connected]);
+
   const currency = account?.currency ?? "USD";
   const campaigns = useMemo<MetaCampaign[]>(() => campaignsResp?.data ?? [], [campaignsResp]);
   const insights = useMemo<Record<string, MetaInsightRow>>(() => {
@@ -918,6 +925,10 @@ export function MetaPanel() {
                       <td className="col-hide-mobile">{ins?.clicks ?? "—"}</td>
                       <td className="col-hide-mobile">{ins?.ctr ? `${Number(ins.ctr).toFixed(2)}%` : "—"}</td>
                       <td className="col-hide-mobile">{(() => {
+                        const real = realRoas[c.id];
+                        if (real && real.roas != null && real.orders > 0) {
+                          return <span title="Real ROAS from your entered orders" style={{ color: "var(--success)", fontWeight: 600 }}>{real.roas.toFixed(2)}×</span>;
+                        }
                         const roas = ins?.purchase_roas?.[0]?.value;
                         return roas && Number(roas) > 0 ? `${Number(roas).toFixed(2)}×` : "—";
                       })()}</td>
