@@ -268,13 +268,15 @@ async def optimizer_recommendations(
 @router.get("/audit")
 async def audit(
     date_preset: str = Query("last_7d"),
+    db: AsyncSession = Depends(get_db),
     _user=Depends(get_current_user),
 ):
     """Deterministic KPI audit of the whole ad account for the period.
 
     Pulls account-level insights, derives the six audited KPIs, then grades them
     against Meta benchmarks and returns a 0-100 score + tiered fixes. Pure rules
-    (see analytics/meta_audit.py) — no LLM, same input → same result."""
+    (see analytics/meta_audit.py) — no LLM, same input → same result. When the
+    operator has entered real orders (COD), those override Meta's blind ROAS."""
     s = get_settings()
     data = await _call(
         f"/{s.meta_ad_account_id}/insights",
@@ -302,6 +304,17 @@ async def audit(
     spend = num("spend") or 0
     purchases = _sum_action(r.get("actions", []), "value", _PURCHASE_TYPES)
     revenue = _sum_action(r.get("action_values", []), "value", _PURCHASE_TYPES)
+
+    # COD ground truth: if the operator entered real orders, use those totals
+    # (× AOV) instead of Meta's blind attribution for conv_rate/ROAS.
+    from app.services import real_orders as _ro, optimizer_config as _oc
+    _ro_all = await _ro.get_all(db)
+    _total_orders = sum(int(e.get("orders", 0) or 0) for e in _ro_all.values())
+    if _total_orders:
+        _cfg = await _oc.get_config(db)
+        _aov = float(_cfg.get("avg_order_value", 0) or 0)
+        purchases = _total_orders
+        revenue = _total_orders * _aov if _aov else revenue
 
     metrics = {
         "ctr": num("ctr"),

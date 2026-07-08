@@ -185,21 +185,37 @@ export function AiMediaBuyerPanel() {
 
 /* Real orders from YOUR store (COD ground truth). Shows the true CPA/ROAS. */
 function RealOrdersInput({ entityId, current, aov, currency, onSave }: {
-  entityId: string; current: number; aov: number; currency: string; onSave: (n: number) => void;
+  entityId: string; current: number; aov: number; currency: string; onSave: (n: number) => Promise<void> | void;
 }) {
   const [v, setV] = useState(String(current));
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   useEffect(() => { setV(String(current)); }, [current]);
   const n = Number(v) || 0;
   const revenue = n * aov;
+  const dirty = String(current) !== v && !Number.isNaN(Number(v));
+
+  async function save() {
+    setSaving(true); setSaved(false);
+    try { await onSave(Number(v)); setSaved(true); setTimeout(() => setSaved(false), 2500); }
+    finally { setSaving(false); }
+  }
+
   return (
     <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-      <label style={{ fontSize: 11, color: "var(--text-tertiary)", fontWeight: 600 }}>Real orders (from your store):</label>
+      <label style={{ fontSize: 11, color: "var(--text-tertiary)", fontWeight: 600 }}>Total orders sold (from your store):</label>
       <input type="number" min={0} value={v} onChange={(e) => setV(e.target.value)}
-        onBlur={() => { const x = Number(v); if (!Number.isNaN(x) && x !== current) onSave(x); }}
+        onKeyDown={(e) => { if (e.key === "Enter") save(); }}
         style={{ width: 70, background: "var(--bg-input)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-sm)", padding: "5px 8px", color: "var(--text-primary)", fontSize: 12, outline: "none" }} />
+      <button onClick={save} disabled={saving || !dirty}
+        style={{ padding: "5px 14px", borderRadius: "var(--radius-sm)", border: "none", fontSize: 12, fontWeight: 700,
+          background: dirty ? "var(--accent)" : "var(--bg-elevated)", color: dirty ? "var(--text-inverse)" : "var(--text-tertiary)",
+          cursor: dirty && !saving ? "pointer" : "default" }}>
+        {saving ? "Saving…" : saved ? "✓ Saved" : "Save"}
+      </button>
       {n > 0 && aov > 0 && (
         <span style={{ fontSize: 11, color: "var(--success)", fontFamily: "var(--font-mono)" }}>
-          → revenue {revenue.toLocaleString()} {currency} (true ROAS the AI will use)
+          → revenue {revenue.toLocaleString()} {currency} (real ROAS the AI uses)
         </span>
       )}
     </div>
