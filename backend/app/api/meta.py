@@ -157,6 +157,52 @@ def _sum_action(rows: list[dict], key: str, action_types: tuple[str, ...]) -> fl
 _PURCHASE_TYPES = ("purchase", "omni_purchase", "offsite_conversion.fb_pixel_purchase")
 
 
+@router.get("/real-roas")
+async def real_roas(
+    date_preset: str = Query("last_7d"),
+    db: AsyncSession = Depends(get_db),
+    _user=Depends(get_current_user),
+):
+    """Real ROAS/CPA per CAMPAIGN, computed from operator-entered orders (COD
+    ground truth Meta can't see) × AOV ÷ the campaign's spend. Sums a campaign's
+    ad-set orders. Empty for campaigns with no entered orders."""
+    from app.services import real_orders as ro_svc
+    from app.services import optimizer_config
+    s = get_settings()
+    cfg = await optimizer_config.get_config(db)
+    aov = float(cfg.get("avg_order_value", 0) or 0)
+    ro = await ro_svc.get_all(db)  # {adset_id: {orders, at}}
+    if not ro or not aov:
+        return {"aov": aov, "campaigns": {}}
+
+    # map ad set → campaign
+    adsets = await _call(f"/{s.meta_ad_account_id}/adsets", params={"fields": "campaign_id", "limit": 200})
+    adset_campaign = {a["id"]: a.get("campaign_id") for a in adsets.get("data", [])}
+
+    # campaign spend for the window
+    ins = await _call(f"/{s.meta_ad_account_id}/insights",
+                      params={"level": "campaign", "date_preset": date_preset, "fields": "campaign_id,spend", "limit": 200})
+    spend_by_campaign = {r.get("campaign_id"): float(r.get("spend", 0) or 0) for r in ins.get("data", [])}
+
+    # sum orders per campaign
+    orders_by_campaign: dict[str, int] = {}
+    for adset_id, entry in ro.items():
+        cid = adset_campaign.get(adset_id)
+        if cid:
+            orders_by_campaign[cid] = orders_by_campaign.get(cid, 0) + int(entry.get("orders", 0) or 0)
+
+    out: dict[str, dict] = {}
+    for cid, orders in orders_by_campaign.items():
+        spend = spend_by_campaign.get(cid, 0.0)
+        revenue = orders * aov
+        out[cid] = {
+            "orders": orders, "revenue": revenue,
+            "roas": (revenue / spend) if spend else None,
+            "cpa": (spend / orders) if orders else None,
+        }
+    return {"aov": aov, "campaigns": out}
+
+
 @router.get("/optimizer/metrics-catalog")
 async def optimizer_metrics_catalog(_user=Depends(get_current_user)):
     """Every metric the optimizer can read, grouped, with its data dependency."""
