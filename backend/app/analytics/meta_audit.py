@@ -54,6 +54,14 @@ BANDS: dict[str, Band] = {
     "frequency": Band("frequency", "Frequency (7d)", False, (1.5, 2, 3, 5), "{:.2f}"),
 }
 
+# Cost benchmarks (cpc, cpm) are in USD. Approximate USD→local rate so they
+# grade correctly in the account currency (an EGP CPM of 91 ≈ $1.85 = excellent,
+# not "Poor"). Rough rates — exact FX doesn't matter for banding.
+COST_KEYS = {"cpc", "cpm"}
+USD_RATE = {"USD": 1.0, "EGP": 48.0, "SAR": 3.75, "AED": 3.67, "MAD": 10.0,
+            "TND": 3.1, "DZD": 135.0, "KWD": 0.31, "QAR": 3.64, "BHD": 0.38, "OMR": 0.38}
+
+
 # Score weights per dimension (must sum to 1.0). Each dimension maps to KPIs.
 DIMENSIONS = {
     "Cost Efficiency":     (0.25, ["cpc", "cpm"]),
@@ -99,9 +107,11 @@ def _assessment(score: int) -> str:
     return "Critical — major problems, consider pausing and restructuring"
 
 
-def audit_metrics(metrics: dict[str, float | None]) -> AuditResult:
+def audit_metrics(metrics: dict[str, float | None], currency: str = "USD") -> AuditResult:
     """metrics: {ctr, cpc, cpm, conv_rate, roas, frequency} — any may be None
-    (unavailable). Missing KPIs are shown as N/A and skipped from scoring."""
+    (unavailable). Missing KPIs are shown as N/A and skipped from scoring.
+    Cost KPIs (cpc, cpm) are graded against USD benchmarks scaled to `currency`."""
+    rate = USD_RATE.get((currency or "USD").upper(), 1.0)
     kpis: list[KPIResult] = []
     grades: dict[str, str] = {}
     for key, band in BANDS.items():
@@ -109,7 +119,9 @@ def audit_metrics(metrics: dict[str, float | None]) -> AuditResult:
         if v is None:
             kpis.append(KPIResult(key, band.label, None, None, band.fmt))
             continue
-        g = band.grade(float(v))
+        # scale the value back to USD for cost KPIs so USD bands apply
+        graded_value = (float(v) / rate) if key in COST_KEYS else float(v)
+        g = band.grade(graded_value)
         grades[key] = g
         kpis.append(KPIResult(key, band.label, float(v), g, band.fmt))
 
@@ -182,4 +194,12 @@ if __name__ == "__main__":
     assert any(k.grade is None for k in partial.kpis)
     assert 0 <= partial.score <= 100
 
-    print("OK meta_audit self-check passed:", good.score, bad.score, partial.score)
+    # currency-aware: EGP CPM 91 (~$1.9) grades Excellent, not Poor
+    egp = audit_metrics({"cpm": 91.0, "cpc": 72.0}, currency="EGP")
+    cpm_grade = next(k.grade for k in egp.kpis if k.key == "cpm")
+    assert cpm_grade in ("Excellent", "Good"), cpm_grade
+    # same number in USD is Poor
+    usd = audit_metrics({"cpm": 91.0}, currency="USD")
+    assert next(k.grade for k in usd.kpis if k.key == "cpm") == "Poor"
+
+    print("OK meta_audit self-check passed:", good.score, bad.score, partial.score, "| EGP cpm:", cpm_grade)
